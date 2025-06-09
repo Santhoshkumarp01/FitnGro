@@ -1,0 +1,86 @@
+/* WorkoutDayPage.css */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=League+Spartan:wght@100..900&family=PT+Sans+Caption:wght@400;700&family=Special+Gothic+Condensed+One&display=swap');
+
+
+.workout-day-container .back-button{
+    background-color: #df3e0d;
+}
+.workout-day-container {
+    max-width: 800px;
+    margin: auto;
+    padding: 20px;
+    text-align: center;
+}
+
+.loading-container, .error-container, .rest-day-message {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.workouts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.workout-details{
+    font-size: smaller;
+    font-family: Poppins, sans-serif;
+}
+
+.workout-header{
+    letter-spacing: 1px;
+    font-size: x-large;
+    font-family: "Bebas Neue", sans-serif;
+    text-align: left;
+}
+.workout-card {
+    background: #000000;
+    color: white;
+    padding: 15px;
+    cursor: pointer;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: 0.3s;
+}
+
+.workout-card:hover {
+    background: #df3e0d;
+    transform: translateY(-5px);
+}
+
+.workout-header h3 {
+    margin: 0;
+}
+
+.workout-arrow {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+
+.start-workout-button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 18px;
+    background-color: #00a676;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+  
+  .start-workout-button:hover {
+    background-color: #007f5f;
+  }
+  
+  .workout-feedback {
+    margin-top: 10px;
+    font-size: 16px;
+    color: #444;
+  }
+  

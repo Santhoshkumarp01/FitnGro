@@ -1,0 +1,660 @@
+.frame {
+    position: absolute;
+    top: 91px;
+    left: 588.18px;
+    width: 283.6px;
+    height: 40px;
+    overflow: hidden;
+}
+.frame-child {
+    position: absolute;
+    top: 670px;
+    left: 35px;
+    width: 1335px;
+    height: 513px;
+}
+.our-achievements {
+    position: absolute;
+    top: 0px;
+    left: 477.5px;
+    font-size: 45px;
+    font-family: 'Source Serif Pro';
+    color: #fff;
+    text-align: center;
+}
+.group-icon {
+    position: absolute;
+    height: 2.86%;
+    width: 22.1%;
+    top: 3.35%;
+    right: 36.7%;
+    bottom: 93.79%;
+    left: 41.2%;
+    max-width: 100%;
+    overflow: hidden;
+    max-height: 100%;
+}
+.background-rectangle {
+    position: absolute;
+    top: 10px;
+    left: calc(50% - 660.5px);
+    border-radius: 8px;
+    background-color: #d9d9d9;
+    width: 1306px;
+    height: 458px;
+}
+.sih-2024-runner-up {
+    width: 730px;
+    position: relative;
+    text-transform: uppercase;
+    display: inline-block;
+}
+.our-team-denqueue {
+    width: 857px;
+    position: relative;
+    font-size: 22px;
+    line-height: 40px;
+    font-weight: 500;
+    font-family: Poppins;
+    color: #000;
+    display: inline-block;
+    height: 184px;
+    flex-shrink: 0;
+}
+.get-started1 {
+    position: relative;
+}
+.get-started {
+    width: 179px;
+    border-radius: 8px;
+    background-color: #101010;
+    height: 53px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 40px;
+    box-sizing: border-box;
+    font-size: 28px;
+    color: #f04e31;
+}
+.tripod-setup {
+    position: absolute;
+    top: 48px;
+    left: 29px;
+    width: 686px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 34px;
+}
+.vector-icon {
+    position: absolute;
+    top: 117px;
+    left: 955px;
+    width: 306px;
+    height: 303px;
+}
+.frame-icon {
+    position: absolute;
+    top: 345px;
+    left: 1170px;
+    width: 143px;
+    height: 46px;
+    overflow: hidden;
+}
+.whatsapp-image-2025-03-15-at-1 {
+    position: absolute;
+    top: 155px;
+    left: 984px;
+    border-radius: 45px;
+    width: 242px;
+    height: 195px;
+    object-fit: cover;
+}
+.background-rectangle-parent {
+    position: absolute;
+    top: 0px;
+    left: calc(50% - 667.5px);
+    width: 1335px;
+    height: 450px;
+}
+.achievements-inner {
+    position: absolute;
+    top: 1249px;
+    left: calc(50% - 667.5px);
+    width: 1335px;
+    height: 450px;
+}
+.background-rectangle1 {
+    position: absolute;
+    top: 0px;
+    left: calc(50% - 653px);
+    border-radius: 8px;
+    background-color: #d9d9d9;
+    width: 1306px;
+    height: 500px;
+}
+.hackfest-2024-regional {
+    margin: 0;
+}
+.hackfest-2024-regional-container {
+    align-self: stretch;
+    position: relative;
+    text-transform: uppercase;
+    display: inline-block;
+    height: 117px;
+    flex-shrink: 0;
+}
+.secured-4th-place {
+    width: 857px;
+    position: relative;
+    font-size: 22px;
+    line-height: 40px;
+    font-weight: 500;
+    font-family: Poppins;
+    color: #000;
+    display: inline-block;
+    height: 212px;
+    flex-shrink: 0;
+}
+.tripod-setup1 {
+    position: absolute;
+    top: 30px;
+    left: 424px;
+    width: 686px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 34px;
+}
+.vector-icon1 {
+    position: absolute;
+    top: 74px;
+    left: 7px;
+    width: 306px;
+    height: 303px;
+}
+.frame-icon1 {
+    position: absolute;
+    top: 324px;
+    left: 197px;
+    width: 143px;
+    height: 46px;
+    overflow: hidden;
+}
+.img-20250314-wa0005-3-icon {
+    position: absolute;
+    top: 134px;
+    left: 25px;
+    border-radius: 40px;
+    width: 270px;
+    height: 146px;
+    object-fit: cover;
+}
+.background-rectangle-group {
+    position: absolute;
+    top: 0px;
+    left: calc(50% - 653px);
+    width: 1306px;
+    height: 500px;
+}
+.achievements-child {
+    position: absolute;
+    top: 679px;
+    left: calc(50% - 660.5px);
+    width: 1306px;
+    height: 500px;
+}
+.background-rectangle2 {
+    position: absolute;
+    top: 10px;
+    left: calc(50% - 660.5px);
+    border-radius: 8px;
+    background-color: #d9d9d9;
+    width: 1306px;
+    height: 450px;
+}
+.t-hub-hackathon-2024-container {
+    width: 807px;
+    position: relative;
+    text-transform: uppercase;
+    display: inline-block;
+    height: 55px;
+    flex-shrink: 0;
+}
+.bagged-the-best {
+    width: 857px;
+    position: relative;
+    font-size: 22px;
+    line-height: 40px;
+    font-weight: 500;
+    font-family: Poppins;
+    color: #000;
+    display: inline-block;
+    height: 214px;
+    flex-shrink: 0;
+}
+.get-started4 {
+    width: 179px;
+    border-radius: 8px;
+    background-color: #101010;
+    height: 47px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 40px;
+    box-sizing: border-box;
+    font-size: 28px;
+    color: #f04e31;
+}
+.vector-icon2 {
+    position: absolute;
+    top: 117px;
+    left: calc(50% + 287.5px);
+    width: 306px;
+    height: 303px;
+}
+.frame-icon2 {
+    position: absolute;
+    top: 367px;
+    left: calc(50% + 477.5px);
+    width: 143px;
+    height: 46px;
+    overflow: hidden;
+}
+.img-20250314-wa0006-2-icon {
+    position: absolute;
+    top: 152.92px;
+    left: calc(50% + 302.05px);
+    border-radius: 71px;
+    width: 280.5px;
+    height: 184.8px;
+    object-fit: contain;
+}
+.frame-group {
+    position: absolute;
+    top: 0px;
+    left: calc(50% - 667.5px);
+    width: 1335px;
+    height: 480px;
+}
+.group-div {
+    position: absolute;
+    top: 129px;
+    left: calc(50% - 667.5px);
+    width: 1335px;
+    height: 480px;
+    font-size: 48px;
+}
+.achievements1 {
+    position: absolute;
+    top: 5px;
+    left: 62px;
+    width: 1335px;
+    height: 1699px;
+}
+.team {
+    position: absolute;
+    top: 1926px;
+    left: 0px;
+    background-color: #0d0d0d;
+    width: 1440px;
+    height: 931px;
+    overflow: hidden;
+}
+.group-icon1 {
+    position: absolute;
+    top: 24.98px;
+    left: calc(50% - 160.95px);
+    width: 321.9px;
+    height: 41.4px;
+}
+.our-team {
+    position: absolute;
+    top: 0px;
+    left: calc(50% - 124.52px);
+}
+.group-parent {
+    position: absolute;
+    top: 1782px;
+    left: calc(50% - 161.27px);
+    width: 321.9px;
+    height: 66.4px;
+    text-align: center;
+    font-size: 45px;
+    color: #fff;
+    font-family: 'Source Serif Pro';
+}
+.frame-parent {
+    position: absolute;
+    top: 0px;
+    left: calc(50% - 721px);
+    background-color: #0d0d0d;
+    width: 1440px;
+    height: 3548.1px;
+    overflow: hidden;
+}
+.home-about-fitness-container {
+    position: absolute;
+    top: 102px;
+    left: calc(50% - 306.5px);
+    line-height: 31px;
+    font-weight: 500;
+    display: inline-block;
+    width: 69px;
+}
+.browse-nfts-buy-container {
+    position: absolute;
+    top: 104px;
+    left: calc(50% - 109.5px);
+    line-height: 31px;
+    font-weight: 500;
+    display: inline-block;
+    width: 97px;
+}
+.linkedin-instagram-twitter-container {
+    position: absolute;
+    top: 104px;
+    left: calc(50% + 86.5px);
+    line-height: 31px;
+    font-weight: 500;
+    display: inline-block;
+    width: 74px;
+}
+.sections {
+    position: absolute;
+    top: 65px;
+    left: calc(50% - 306.5px);
+    font-size: 20px;
+    line-height: 27.5px;
+    text-transform: uppercase;
+    display: inline-block;
+    width: 113px;
+}
+.products {
+    position: absolute;
+    top: 65px;
+    left: calc(50% - 109.5px);
+    font-size: 20px;
+    line-height: 27.5px;
+    text-transform: uppercase;
+    display: inline-block;
+    width: 123px;
+}
+.contact {
+    position: absolute;
+    top: 65px;
+    left: calc(50% + 86.5px);
+    font-size: 20px;
+    line-height: 27.5px;
+    text-transform: uppercase;
+    display: inline-block;
+    width: 128px;
+}
+.join-our-newsletter {
+    position: absolute;
+    top: 65px;
+    left: calc(50% + 240.5px);
+    font-size: 20px;
+    line-height: 27.5px;
+    text-transform: uppercase;
+    display: inline-block;
+    width: 293px;
+}
+.fitness-tech- {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    font-size: 57px;
+    font-family: Galgo;
+}
+.newsletter-child {
+    position: absolute;
+    top: 0px;
+    left: calc(50% - 169px);
+    border-radius: 52px;
+    background-color: rgba(255, 255, 255, 0.4);
+    width: 338px;
+    height: 51px;
+}
+.submit {
+    position: relative;
+    line-height: 27.5px;
+    text-transform: uppercase;
+}
+.submit-wrapper {
+    position: absolute;
+    top: 7px;
+    left: calc(50% + 28px);
+    border-radius: 76px;
+    background-color: #393939;
+    height: 38px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: 0px 37px;
+    box-sizing: border-box;
+}
+.email-address {
+    position: absolute;
+    top: 10px;
+    left: calc(50% - 148px);
+    line-height: 31px;
+    font-weight: 500;
+}
+.newsletter {
+    position: absolute;
+    top: 0px;
+    left: calc(50% - 158px);
+    width: 338px;
+    height: 51px;
+}
+.newsletter-box {
+    position: absolute;
+    top: 125px;
+    left: 795px;
+    width: 368px;
+    height: 52px;
+}
+.home-about-fitness-login-sign-parent {
+    position: absolute;
+    top: 30px;
+    left: calc(50% - 590px);
+    width: 1163px;
+    height: 257px;
+}
+.footer {
+    position: absolute;
+    top: 2882.39px;
+    left: 14px;
+    background-color: #f04e31;
+    width: 1428px;
+    height: 377.6px;
+    font-size: 16px;
+    color: #fff;
+    font-family: Roboto;
+}
+.about-section {
+    position: absolute;
+    top: 0px;
+    left: calc(50% - 721px);
+    width: 1442px;
+    height: 3548.1px;
+}
+.about-section-wrapper {
+    position: absolute;
+    top: 937px;
+    left: calc(50% - 720px);
+    width: 1442px;
+    height: 3548.1px;
+}
+.hero-section {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    background-color: #000;
+    width: 1440px;
+    height: 876px;
+    overflow-x: auto;
+}
+.img-20250314-wa0006-1-icon {
+    position: absolute;
+    top: 0px;
+    left: -79px;
+    width: 1599px;
+    height: 1066px;
+    object-fit: cover;
+}
+.navbar-variant6-child {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    top: 0%;
+    right: 0%;
+    bottom: 0%;
+    left: 0%;
+    backdrop-filter: blur(4px);
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.5);
+}
+.login1 {
+    position: absolute;
+    width: 100%;
+    top: 0%;
+    left: 0%;
+    display: inline-block;
+}
+.login-button-navbar {
+    position: absolute;
+    height: 36.36%;
+    width: 12.13%;
+    top: 32.73%;
+    right: 8.01%;
+    bottom: 30.91%;
+    left: 79.86%;
+}
+.login-button-navbar-child {
+    position: absolute;
+    height: 100%;
+    width: 39.2%;
+    top: 0%;
+    right: 0%;
+    bottom: 0%;
+    left: 60.8%;
+    border-radius: 30px;
+    background-color: #101010;
+}
+.about1 {
+    position: absolute;
+    top: 24.32%;
+    left: 68.34%;
+}
+.fitness1 {
+    position: absolute;
+    top: 24.32%;
+    left: 0%;
+    font-weight: 600;
+    color: #4f4f4f;
+}
+.login-button-navbar1 {
+    position: absolute;
+    height: 67.27%;
+    width: 54.58%;
+    top: 16.36%;
+    right: 38.33%;
+    bottom: 16.36%;
+    left: 7.09%;
+    color: #f04e31;
+}
+.settings {
+    position: absolute;
+    top: 18px;
+    left: 1239px;
+    font-weight: 600;
+    color: #fff;
+}
+.navbar-variant6 {
+    position: absolute;
+    top: 64px;
+    left: 25px;
+    width: 437px;
+    height: 55px;
+}
+.hamburger-button-child {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    top: 0%;
+    right: 0%;
+    bottom: 0%;
+    left: 0%;
+    border-radius: 10px;
+    background-color: #d9d9d9;
+}
+.hamburger-button-item {
+    position: absolute;
+    height: 14%;
+    width: 64.38%;
+    top: 21.61%;
+    right: 17.8%;
+    bottom: 64.39%;
+    left: 17.83%;
+    border-radius: 8px;
+    background-color: #000;
+}
+.hamburger-button-inner {
+    position: absolute;
+    height: 13.09%;
+    width: 64.38%;
+    top: 43.72%;
+    right: 17.8%;
+    bottom: 43.19%;
+    left: 17.83%;
+    border-radius: 8px;
+    background-color: #000;
+}
+.rectangle-div {
+    position: absolute;
+    height: 14%;
+    width: 64.38%;
+    top: 64.82%;
+    right: 17.8%;
+    bottom: 21.18%;
+    left: 17.83%;
+    border-radius: 8px;
+    background-color: #000;
+}
+.hamburger-button {
+    position: absolute;
+    top: 64px;
+    left: 1355px;
+    width: 64px;
+    height: 55px;
+}
+.section-1 {
+    position: absolute;
+    top: -40px;
+    left: calc(50% - 720px);
+    width: 1440px;
+    height: 931px;
+    overflow: hidden;
+    font-size: 22px;
+    color: #303030;
+}
+.achievements {
+    width: 100%;
+    position: relative;
+    background-color: #000;
+    height: 4197px;
+    overflow: hidden;
+    text-align: left;
+    font-size: 64px;
+    color: #101010;
+    font-family: 'League Spartan';
+}
+

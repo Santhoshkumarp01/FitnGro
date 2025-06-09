@@ -1,0 +1,273 @@
+/* Loading State */
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #f3f4f6;
+}
+
+.loading-text {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+/* Error State */
+.error-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #f3f4f6;
+}
+
+.error-content {
+  text-align: center;
+}
+
+.error-heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.error-text {
+  color: #4b5563;
+}
+
+.error-button {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.error-button:hover {
+  background-color: #1d4ed8;
+}
+
+/* Main Container */
+.exercise-detail-container {
+  min-height: 100vh;
+  background-color: #f3f4f6;
+  padding: 2rem 1rem;
+}
+
+@media (min-width: 640px) {
+  .exercise-detail-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .exercise-detail-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+.exercise-detail-wrapper {
+  max-width: 80rem;
+  margin: 0 auto;
+}
+
+/* Header Section */
+.header-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.back-button {
+  padding: 0.5rem 1rem;
+  background-color: #e5e7eb;
+  color: #1f2937;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.back-button:hover {
+  background-color: #d1d5db;
+}
+
+.exercise-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.header-spacer {
+  width: 5rem;
+}
+
+/* Exercise Content */
+.exercise-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .exercise-content {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Video Section */
+.section-heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1rem;
+}
+
+.video-container {
+  background-color: #ffffff;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.video-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 12rem;
+  background-color: #e5e7eb;
+}
+
+.video-placeholder-text {
+  color: #4b5563;
+}
+
+.webcam-container {
+  margin-top: 1rem;
+  background-color: #ffffff;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.webcam-feed {
+  width: 100%;
+  height: auto;
+}
+
+.sets-reps-display {
+  background-color: #ffffff;
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid #e5e7eb;
+}
+
+.progress-heading {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.reps-info, .sets-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.info-label {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.reps-count {
+  font-size: 1.125rem;
+  color: #2563eb;
+  font-weight: bold;
+}
+
+.sets-count {
+  font-size: 1.125rem;
+  color: #16a34a;
+  font-weight: bold;
+}
+
+.progress-bar {
+  width: 100%;
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+  height: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.progress-bar-fill {
+  background-color: #2563eb;
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.tracker-info {
+  background-color: #ffffff;
+  box-shadow: 0 4px 6px rgba(0, 0,0.1);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.tracker-exercise, .tracker-feedback {
+  margin-bottom: 0.5rem;
+}
+
+.tracker-exercise {
+  font-size: 1.125rem;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.tracker-feedback {
+  color: #4b5563;
+}
+
+.rest-info {
+  margin-top: 0.5rem;
+}
+
+.rest-time {
+  color: #4b5563;
+}
+
+.rest-progress-bar {
+  width: 100%;
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+  height: 0.5rem;
+}
+
+.rest-progress-bar-fill {
+  background-color: #16a34a;
+  height: 100%;
+  border-radius: 0.4rem;
+  transition: width 0.3s ease;
+}
+
+/* Exercise Instructions */
+.exercise-instructions {
+  background-color: #ffffff;
+  box-shadow: 0 4px 5px rgba(0, 0, 0,0.1);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+}
+
+.instruction-text {
+  margin-bottom: 0.5rem;
+  color: #333333;
+}

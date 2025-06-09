@@ -1,0 +1,615 @@
+/* Importing Inter Font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+body {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+}
+
+/* Core Styles */
+.chatbot-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.chatbot-toggle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #f04e31;
+  border: none;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.chatbot-toggle:hover {
+  transform: scale(1.1);
+  background-color: #d93c20;
+}
+
+.chatbot-window {
+  width: 350px;
+  max-width: 90vw;
+  height: 500px;
+  max-height: 80vh;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.chatbot-header {
+  background-color: #101010;
+  color: white;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.chatbot-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.chatbot-header button {
+  background: none;
+  border: none;
+  color: rgb(253, 6, 6);
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+  font-weight : 1000;
+}
+
+/* Chat Content Area */
+.chat-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.chatbot-messages {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+  background-color: #f9f9f9;
+}
+
+/* Messages */
+.message {
+  padding: 10px 15px;
+  border-radius: 18px;
+  max-width: 80%;
+  word-wrap: break-word;
+  line-height: 1.4;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.message.user {
+  background-color: #f04e31;
+  color: white;
+  margin-left: auto;
+  border-bottom-right-radius: 4px;
+}
+
+.message.bot {
+  background-color: #e0e0e0;
+  color: #333;
+  margin-right: auto;
+  border-bottom-left-radius: 4px;
+}
+
+/* Form Toggle Button */
+.form-toggle-btn {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 6px 12px;
+  background-color: #f04e31;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+/* Input Area */
+.chatbot-input {
+  display: flex;
+  padding: 12px;
+  background: white;
+  border-top: 1px solid #eee;
+  flex-shrink: 0;
+}
+
+.chatbot-input input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  outline: none;
+  font-size: 14px;
+}
+
+.chatbot-input button {
+  margin-left: 10px;
+  padding: 10px 15px;
+  background-color: #f04e31;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* Form Styles */
+.user-details-form {
+  padding: 15px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-section {
+  margin-bottom: 20px;
+}
+
+.form-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.form-row > * {
+  flex: 1;
+}
+
+.user-details-form label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #555;
+}
+
+.user-details-form input,
+.user-details-form select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+/* Rest Days */
+.rest-days-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rest-day-option {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.rest-day-option input {
+  margin-right: 6px;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 15px;
+}
+
+.submit-btn {
+  flex: 1;
+  padding: 10px;
+  background-color: #f04e31;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.cancel-btn {
+  flex: 1;
+  padding: 10px;
+  background-color: #e0e0e0;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 480px) {
+  .chatbot-window {
+    height: 85vh;
+    max-height: 85vh;
+  }
+  
+  .form-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  height: 17px;
+}
+
+.typing-indicator span {
+  height: 8px;
+  width: 8px;
+  margin: 0 2px;
+  background-color: #666;
+  border-radius: 50%;
+  display: inline-block;
+  opacity: 0.4;
+}
+
+.typing-indicator span:nth-child(1) {
+  animation: typing 1s infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation: typing 1s infinite 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation: typing 1s infinite 0.4s;
+}
+
+@keyframes typing {
+  0% {
+    opacity: 0.4;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+  100% {
+    opacity: 0.4;
+    transform: translateY(0);
+  }
+}
+
+/* Adding 3D Effect to Boxes */
+.chatbot-toggle,
+.chatbot-window,
+.chatbot-header,
+.chatbot-messages,
+.chatbot-input,
+.message {
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* User Message Box (Sent Messages) */
+.message.user {
+  background: linear-gradient(135deg, #8a2be2, #ff7f50); /* Violet and Orange Blend */
+  color: white;
+  font-weight: 600;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 8px rgba(138, 43, 226, 0.3);
+}
+
+/* Send Button */
+.chatbot-input button {
+  background: linear-gradient(135deg, #8a2be2, #ff7f50); /* Violet and Orange Blend */
+  color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.chatbot-input button:hover {
+  background: linear-gradient(135deg, #7324be, #e96b40);
+  box-shadow: 0 4px 12px rgba(138, 43, 226, 0.5);
+}
+
+/* Faster Animated Gradient Effect */
+@keyframes gradientMove {
+  0% {
+    background-position: left;
+  }
+  100% {
+    background-position: right;
+  }
+}
+
+/* Apply Faster Animation to User Message Box */
+.message.user {
+  background: linear-gradient(135deg, #8a2be2, #ff7f50);
+  background-size: 200% 200%;
+  animation: gradientMove 2s infinite alternate; /* Increased speed */
+  color: white;
+  font-weight: 600;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 8px rgba(138, 43, 226, 0.3);
+}
+
+/* Apply Faster Animation to Send Button */
+.chatbot-input button {
+  background: linear-gradient(135deg, #8a2be2, #ff7f50);
+  background-size: 200% 200%;
+  animation: gradientMove 2s infinite alternate; /* Increased speed */
+  color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.chatbot-input button:hover {
+  box-shadow: 0 4px 12px rgba(138, 43, 226, 0.5);
+}
+
+/* Replace Inner Background with Blended Orange, Pink, Blue & Yellow */
+.chatbot-window {
+  background: linear-gradient(135deg, #ff7f50, #ff007f, #3b4cff, #ffd700); /* Orange, Pink, Blue, Yellow */
+  border-radius: 10px;
+  box-shadow: 0 5px 12px rgba(255, 127, 80, 0.3);
+  padding: 15px;
+  background-size: 300% 300%;
+  animation: gradientMove 2s infinite alternate;
+}
+
+/* Animated Gradient Effect */
+@keyframes gradientMove {
+  0% {
+    background-position: left;
+  }
+  100% {
+    background-position: right;
+  }
+}
+
+
+/* Message Bubbles */
+.message {
+  padding: 10px 15px;
+  border-radius: 12px;
+  position: relative;
+  max-width: 80%;
+  font-weight: 600;
+}
+
+/* User Message (Right Side) */
+.message.user {
+  background: linear-gradient(135deg, #8a2be2, #ff7f50);
+  color: white;
+  margin-left: auto;
+  box-shadow: 0 4px 8px rgba(138, 43, 226, 0.3);
+  background-size: 200% 200%;
+  animation: gradientMove 2s infinite alternate;
+}
+
+/* Dog Ear for User Message */
+.message.user::after {
+  content: "";
+  position: absolute;
+  right: -10px;
+  top: 2px;
+  border-width: 10px 10px 0 0;
+  border-style: solid;
+  border-color: #8a2be2 transparent;
+}
+
+/* Bot Message (Left Side) */
+.message.bot {
+  background: linear-gradient(135deg, #ff007f, #ff7f50, #3b4cff); /* Blended Pink, Orange, and Blue */
+  color: white;
+  margin-right: auto;
+  box-shadow: 0 4px 8px rgba(255, 0, 127, 0.3);
+  background-size: 300% 300%;
+  animation: gradientMove 2s infinite alternate;
+}
+
+/* Keyframes for Gradient Animation */
+@keyframes gradientMove {
+  0% {
+    background-position: left;
+  }
+  100% {
+    background-position: right;
+  }
+}
+
+
+/* Dog Ear for Bot Message */
+.message.bot::after {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 2px;
+  border-width: 10px 0 0 10px;
+  border-style: solid;
+  border-color: #ff007f transparent;
+}
+
+/* Update the form action buttons */
+.submit-btn {
+  flex: 1;
+  padding: 10px;
+  background: linear-gradient(135deg, #4CAF50, #2E7D32); /* Green gradient */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.submit-btn:hover {
+  background: linear-gradient(135deg, #2E7D32, #1B5E20);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.cancel-btn {
+  flex: 1;
+  padding: 10px;
+  background: linear-gradient(135deg, #F44336, #C62828); /* Red gradient */
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.cancel-btn:hover {
+  background: linear-gradient(135deg, #C62828, #B71C1C);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+/* Disabled state for both buttons */
+.submit-btn:disabled,
+.cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #cccccc;
+  color: #666666;
+}
+
+/* Form Toggle Button - Complete Profile */
+.form-toggle-btn {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #4CAF50, #2E7D32, #1B5E20);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  background-size: 200% 200%;
+  animation: gradientMove 3s ease infinite, glitter 2s linear infinite;
+}
+
+.form-toggle-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(76, 175, 80, 0.4);
+}
+
+/* Gradient Animation */
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Glitter/Shine Animation */
+@keyframes glitter {
+  0% {
+    box-shadow: 
+      0 0 5px rgba(255, 255, 255, 0.2),
+      0 0 10px rgba(255, 255, 255, 0.2),
+      0 0 15px rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 0 10px rgba(255, 255, 255, 0.4),
+      0 0 20px rgba(255, 255, 255, 0.4),
+      0 0 30px rgba(255, 255, 255, 0.4);
+  }
+  100% {
+    box-shadow: 
+      0 0 5px rgba(255, 255, 255, 0.2),
+      0 0 10px rgba(255, 255, 255, 0.2),
+      0 0 15px rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* Add a subtle shine effect */
+.form-toggle-btn::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0) 45%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 55%
+  );
+  transform: rotate(45deg);
+  animation: shine 2s infinite;
+}
+
+@keyframes shine {
+  0% {
+    left: -50%;
+  }
+  20% {
+    left: 150%;
+  }
+  100% {
+    left: 150%;
+  }
+}
+
