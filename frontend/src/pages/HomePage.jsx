@@ -165,7 +165,7 @@ const solutions = [
   useEffect(() => {
     const fetchApprovedExperts = async () => {
       try {
-        const response = await fetch('http://localhost:8000/approved-experts', {
+        const response = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/generate-plan', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
@@ -277,7 +277,7 @@ const solutions = [
         formData.append('certification', certification);
         formData.append('bio', bio);
 
-        const signupResponse = await fetch('http://localhost:8000/expert-signup', {
+        const signupResponse = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/expert-signup', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${idToken}` },
           body: formData,
@@ -290,7 +290,7 @@ const solutions = [
 
         const responseData = await signupResponse.json();
         const certificateUrl = responseData.certificate_url;
-        const emailResponse = await fetch('http://localhost:8000/send-admin-email', {
+        const emailResponse = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/send-admin-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -372,7 +372,7 @@ const solutions = [
 
         // Call the /signin endpoint to add user to premiumUsers
         const idToken = await userCredential.user.getIdToken();
-        const signinResponse = await fetch('http://localhost:8000/signin', {
+        const signinResponse = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/signin', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${idToken}`,
@@ -414,7 +414,7 @@ const solutions = [
       const idToken = await result.user.getIdToken();
 
       // Call the /signin endpoint to add user to premiumUsers
-      const signinResponse = await fetch('http://localhost:8000/signin', {
+      const signinResponse = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/signin', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${idToken}`,
@@ -444,7 +444,7 @@ const solutions = [
         focus: formData.focus || formData.fitness_goal || "strength"
       });
       console.log("Authorization header:", `Bearer ${idToken}`);
-      const response = await fetch('http://localhost:8000/generate-plan', {
+      const response = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/generate-plan', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

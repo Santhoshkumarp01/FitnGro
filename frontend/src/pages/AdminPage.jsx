@@ -9,7 +9,7 @@ const AdminPage = () => {
   useEffect(() => {
     const fetchExperts = async () => {
       try {
-        const response = await fetch('http://localhost:8000/approved-experts');
+        const response = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/approved-experts');
         if (!response.ok) throw new Error('Failed to fetch experts');
         const data = await response.json();
         setExperts(data.filter(expert => !expert.approved));
@@ -23,7 +23,7 @@ const AdminPage = () => {
   const handleApprove = async (userEmail) => {
     try {
       const idToken = await auth.currentUser.getIdToken();
-      const response = await fetch('http://localhost:8000/approve-expert', {
+      const response = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/approve-expert', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',

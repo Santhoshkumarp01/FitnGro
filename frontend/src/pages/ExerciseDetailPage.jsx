@@ -366,7 +366,7 @@ const ExerciseDetailPage = () => {
         );
 
         try {
-          const response = await axios.post('http://localhost:8000/track-exercise', {
+          const response = await axios.post('REACT_APP_API_URL=https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/track-exercise', {
             userEmail,
             exerciseName: workoutName,
             currentSet,

@@ -41,7 +41,7 @@ const ExpertsPage = () => {
     const fetchApprovedExperts = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:8000/approved-experts', {
+        const response = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/approved-experts', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
