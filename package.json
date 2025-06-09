@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npx vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "npx serve -s dist"
@@ -29,6 +29,7 @@
     "react-router-dom": "^7.6.2",
     "serve": "^14.2.0",
     "tailwindcss": "^4.1.8"
+  
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
