@@ -17,12 +17,11 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "https://fitngro.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # Firebase Initialization
 if not firebase_admin._apps:
     firebase_creds = os.getenv("FIREBASE_CREDENTIALS")
