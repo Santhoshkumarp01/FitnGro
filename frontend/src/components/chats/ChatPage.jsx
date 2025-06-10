@@ -107,7 +107,7 @@ const ChatPage = () => {
     useEffect(() => {
       const fetchWorkouts = async () => {
         try {
-          const response = await fetch('http://localhost:8000/get-all-workouts', {
+          const response = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/get-all-workouts', {
             headers: { 'Authorization': `Bearer ${await auth.currentUser.getIdToken()}` }
           });
           if (!response.ok) throw new Error('Failed to fetch workouts');
@@ -170,7 +170,7 @@ const ChatPage = () => {
 
     const handleSubmit = async () => {
       try {
-        const response = await fetch('http://localhost:8000/create-workout-plan', {
+        const response = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/create-workout-plan', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
