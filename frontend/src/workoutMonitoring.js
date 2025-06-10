@@ -1,7 +1,4 @@
-/**
- * Workout monitoring logic for push-ups using MediaPipe Pose.
- * Optimized for mobile devices with dynamic resolution, adaptive frame rate, and offline storage.
- */
+
 import { Pose } from 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5/pose.js';
 import { Camera } from 'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js';
 

@@ -27,16 +27,28 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; 
-          elif [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; 
-          else echo "requirements.txt not found in root or backend/"; exit 1; fi
+          # Navigate to backend directory if that's where your files are
+          cd backend || echo "No backend directory, using root"
+          if [ -f requirements.txt ]; then 
+            pip install -r requirements.txt
+          else 
+            echo "requirements.txt not found"; 
+            exit 1; 
+          fi
 
       # Optional: Add tests
       # - name: Run tests
       #   run: pytest
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+        run: |
+          # If your files are in backend/ directory, zip from there
+          if [ -d "backend" ]; then
+            cd backend
+            zip -r ../release.zip ./*
+          else
+            zip release.zip ./* -r
+          fi
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
@@ -77,3 +89,4 @@ jobs:
         with:
           app-name: 'fitngro-backend'
           slot-name: 'Production'
+          startup-command: 'python -m uvicorn main:app --host 0.0.0.0 --port 8000'
