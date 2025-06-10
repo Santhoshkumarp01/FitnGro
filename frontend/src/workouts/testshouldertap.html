@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shoulder Taps Counter (Video Upload, WASM)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    #video { 
+      max-width: 100%; 
+      margin-bottom: 1em;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+    }
+    #feedback { 
+      font-size: 1.2em; 
+      margin-top: 1em; 
+      color: #007bff;
+      padding: 10px;
+      border-radius: 5px;
+      background-color: #f8f9fa;
+    }
+    #result { 
+      font-size: 1.4em; 
+      margin-top: 1em; 
+      font-weight: bold; 
+      color: #28a745;
+      padding: 15px;
+      border-radius: 8px;
+      background-color: #d4edda;
+    }
+    .processing { 
+      color: #ffc107; 
+      background-color: #fff3cd;
+    }
+    .error { 
+      color: #dc3545; 
+      background-color: #f8d7da;
+    }
+    .warning {
+      color: #856404;
+      background-color: #fff3cd;
+    }
+    .good-form {
+      color: #155724;
+      background-color: #d4edda;
+    }
+    #stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .stat-box {
+      padding: 15px;
+      border-radius: 8px;
+      background-color: #e9ecef;
+      text-align: center;
+    }
+    .stat-number {
+      font-size: 2em;
+      font-weight: bold;
+      color: #495057;
+    }
+    .stat-label {
+      font-size: 0.9em;
+      color: #6c757d;
+      margin-top: 5px;
+    }
+    #fileInput {
+      margin-bottom: 20px;
+      padding: 10px;
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      background-color: #f8f9fa;
+    }
+  </style>
+</head>
+<body>
+  <h2>Shoulder Taps in Plank Counter</h2>
+  <p>Upload a video of yourself doing shoulder taps in plank position. The system will count your taps, measure timing, and provide form feedback.</p>
+  
+  <input type="file" id="fileInput" accept="video/*">
+  <video id="video" controls muted></video>
+  <div id="feedback"></div>
+  <div id="result"></div>
+  <div id="stats"></div>
+
+  <script type="module">
+    import {
+      FilesetResolver,
+      PoseLandmarker,
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
+
+    let poseLandmarker, vision, processing = false;
+    let animationFrameId = null;
+
+    async function setupPoseLandmarker() {
+      try {
+        vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+        );
+        poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          numPoses: 1,
+          minPoseDetectionConfidence: 0.5,
+          minPosePresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+          outputSegmentationMasks: false,
+        });
+        console.log("PoseLandmarker initialized successfully");
+        document.getElementById('feedback').textContent = "Pose detection ready. Upload a video to analyze shoulder taps.";
+      } catch (error) {
+        console.error("Failed to initialize PoseLandmarker:", error);
+        document.getElementById('feedback').textContent = "Failed to load pose detection model. Please try refreshing the page.";
+        document.getElementById('feedback').className = "error";
+      }
+    }
+
+    function calcDistance(a, b) {
+      return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+    }
+
+    function calcAngle(a, b, c) {
+      const ab = Math.hypot(b.x - a.x, b.y - a.y);
+      const bc = Math.hypot(c.x - b.x, c.y - b.y);
+      const ac = Math.hypot(c.x - a.x, c.y - a.y);
+      return Math.acos((ab**2 + bc**2 - ac**2) / (2 * ab * bc)) * (180 / Math.PI);
+    }
+
+    function isInPlankPosition(landmarks) {
+      const nose = landmarks[0];
+      const leftShoulder = landmarks[11];
+      const rightShoulder = landmarks[12];
+      const leftHip = landmarks[23];
+      const rightHip = landmarks[24];
+      const leftKnee = landmarks[25];
+      const rightKnee = landmarks[26];
+      const leftAnkle = landmarks[27];
+      const rightAnkle = landmarks[28];
+
+      // Check if body is roughly horizontal (plank position)
+      const shoulderMidpoint = {
+        x: (leftShoulder.x + rightShoulder.x) / 2,
+        y: (leftShoulder.y + rightShoulder.y) / 2
+      };
+      const hipMidpoint = {
+        x: (leftHip.x + rightHip.x) / 2,
+        y: (leftHip.y + rightHip.y) / 2
+      };
+
+      // Body should be relatively straight (small vertical difference)
+      const bodyAlignment = Math.abs(shoulderMidpoint.y - hipMidpoint.y);
+      
+      // Knees should be off the ground (higher than hips in image coordinates)
+      const kneesUp = leftKnee.y < leftHip.y && rightKnee.y < rightHip.y;
+      
+      return bodyAlignment < 0.1 && kneesUp;
+    }
+
+    function analyzeForm(landmarks) {
+      const leftShoulder = landmarks[11];
+      const rightShoulder = landmarks[12];
+      const leftElbow = landmarks[13];
+      const rightElbow = landmarks[14];
+      const leftWrist = landmarks[15];
+      const rightWrist = landmarks[16];
+      const leftHip = landmarks[23];
+      const rightHip = landmarks[24];
+      const nose = landmarks[0];
+
+      const feedback = [];
+
+      // Check plank position
+      if (!isInPlankPosition(landmarks)) {
+        feedback.push("Maintain proper plank position - body should be straight");
+      }
+
+      // Check core alignment
+      const shoulderMidpoint = {
+        x: (leftShoulder.x + rightShoulder.x) / 2,
+        y: (leftShoulder.y + rightShoulder.y) / 2
+      };
+      const hipMidpoint = {
+        x: (leftHip.x + rightHip.x) / 2,
+        y: (leftHip.y + rightHip.y) / 2
+      };
+
+      const bodyTilt = Math.abs(shoulderMidpoint.y - hipMidpoint.y);
+      if (bodyTilt > 0.08) {
+        if (shoulderMidpoint.y > hipMidpoint.y) {
+          feedback.push("Lower your hips - avoid sagging");
+        } else {
+          feedback.push("Lower your shoulders - avoid piking up");
+        }
+      }
+
+      // Check arm position
+      const leftArmAngle = calcAngle(leftShoulder, leftElbow, leftWrist);
+      const rightArmAngle = calcAngle(rightShoulder, rightElbow, rightWrist);
+      
+      if (leftArmAngle < 160 || rightArmAngle < 160) {
+        feedback.push("Keep supporting arm straight and strong");
+      }
+
+      // Check shoulder stability
+      const shoulderWidth = calcDistance(leftShoulder, rightShoulder);
+      const wristWidth = calcDistance(leftWrist, rightWrist);
+      const widthRatio = wristWidth / shoulderWidth;
+      
+      if (widthRatio < 0.8) {
+        feedback.push("Keep hands shoulder-width apart");
+      }
+
+      return feedback;
+    }
+
+    function detectShoulderTap(landmarks, side) {
+      const leftWrist = landmarks[15];
+      const rightWrist = landmarks[16];
+      const leftShoulder = landmarks[11];
+      const rightShoulder = landmarks[12];
+
+      if (side === 'left') {
+        // Right hand tapping left shoulder
+        const distance = calcDistance(rightWrist, leftShoulder);
+        return distance < 0.15; // Threshold for tap detection
+      } else {
+        // Left hand tapping right shoulder
+        const distance = calcDistance(leftWrist, rightShoulder);
+        return distance < 0.15;
+      }
+    }
+
+    function cleanup() {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      processing = false;
+    }
+
+    function updateStats(stats) {
+      const statsDiv = document.getElementById('stats');
+      const avgTime = stats.tapTimes.length > 0 ? 
+        (stats.tapTimes.reduce((a, b) => a + b, 0) / stats.tapTimes.length).toFixed(2) : 0;
+      
+      statsDiv.innerHTML = `
+        <div class="stat-box">
+          <div class="stat-number">${stats.totalTaps}</div>
+          <div class="stat-label">Total Taps</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number">${stats.leftTaps}</div>
+          <div class="stat-label">Left Shoulder</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number">${stats.rightTaps}</div>
+          <div class="stat-label">Right Shoulder</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number">${avgTime}s</div>
+          <div class="stat-label">Avg Tap Duration</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number">${stats.totalTime.toFixed(1)}s</div>
+          <div class="stat-label">Total Exercise Time</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number">${stats.formScore}%</div>
+          <div class="stat-label">Form Score</div>
+        </div>
+      `;
+    }
+
+    async function analyzeVideo(video) {
+      return new Promise(async (resolve, reject) => {
+        document.getElementById('feedback').textContent = "Processing video...";
+        document.getElementById('feedback').className = "processing";
+        document.getElementById('result').textContent = "";
+        document.getElementById('stats').innerHTML = "";
+        
+        console.log("Processing shoulder taps video...");
+        
+        let stats = {
+          totalTaps: 0,
+          leftTaps: 0,
+          rightTaps: 0,
+          tapTimes: [],
+          totalTime: 0,
+          formScore: 100,
+          formIssues: 0,
+          totalFrames: 0
+        };
+
+        let currentTapState = { left: false, right: false };
+        let tapStartTime = { left: null, right: null };
+        let lastFeedback = "";
+        let startTime = null;
+
+        if (!poseLandmarker) {
+          await setupPoseLandmarker();
+          if (!poseLandmarker) {
+            const errorMsg = "Error: Could not initialize pose detection.";
+            document.getElementById('feedback').textContent = errorMsg;
+            document.getElementById('feedback').className = "error";
+            console.error(errorMsg);
+            reject(new Error(errorMsg));
+            return;
+          }
+        }
+
+        // Reset video to start
+        video.currentTime = 0;
+        video.muted = true;
+        
+        await new Promise((res) => {
+          const onCanPlay = () => {
+            video.removeEventListener('canplay', onCanPlay);
+            res();
+          };
+          video.addEventListener('canplay', onCanPlay);
+          if (video.readyState >= 3) {
+            res();
+          }
+        });
+
+        const FRAME_SKIP = 2;
+        let frame = 0;
+        let lastProcessedTime = -1;
+
+        function giveFeedback(msg, className = "processing") {
+          if (msg !== lastFeedback) {
+            document.getElementById('feedback').textContent = msg;
+            document.getElementById('feedback').className = className;
+            console.log("Feedback:", msg);
+            lastFeedback = msg;
+          }
+        }
+
+        function processFrame() {
+          try {
+            const currentTime = video.currentTime;
+            
+            if (video.ended || currentTime >= video.duration) {
+              stats.totalTime = currentTime;
+              stats.formScore = Math.max(0, Math.round(100 - (stats.formIssues / stats.totalFrames) * 100));
+              
+              const resultText = `Analysis Complete!\nTotal Taps: ${stats.totalTaps} (Left: ${stats.leftTaps}, Right: ${stats.rightTaps})\nExercise Duration: ${stats.totalTime.toFixed(1)}s\nForm Score: ${stats.formScore}%`;
+              
+              document.getElementById('result').textContent = resultText;
+              document.getElementById('feedback').textContent = "Analysis complete.";
+              document.getElementById('feedback').className = "";
+              
+              updateStats(stats);
+              
+              console.log("Analysis complete:", stats);
+              video.pause();
+              cleanup();
+              resolve(stats);
+              return;
+            }
+
+            if (frame % FRAME_SKIP === 0 && currentTime !== lastProcessedTime) {
+              lastProcessedTime = currentTime;
+              
+              if (startTime === null) {
+                startTime = currentTime;
+              }
+              
+              try {
+                const results = poseLandmarker.detectForVideo(video, performance.now());
+                if (results.landmarks && results.landmarks.length > 0) {
+                  const landmarks = results.landmarks[0];
+                  stats.totalFrames++;
+
+                  // Analyze form
+                  const formFeedback = analyzeForm(landmarks);
+                  if (formFeedback.length > 0) {
+                    stats.formIssues++;
+                    giveFeedback(formFeedback[0], "warning");
+                  } else if (isInPlankPosition(landmarks)) {
+                    giveFeedback("Good plank position! Keep it steady.", "good-form");
+                  }
+
+                  // Detect shoulder taps
+                  const leftTapDetected = detectShoulderTap(landmarks, 'left');
+                  const rightTapDetected = detectShoulderTap(landmarks, 'right');
+
+                  // Left shoulder tap (right hand)
+                  if (leftTapDetected && !currentTapState.left) {
+                    currentTapState.left = true;
+                    tapStartTime.left = currentTime;
+                    giveFeedback("Left shoulder tap detected!", "good-form");
+                  } else if (!leftTapDetected && currentTapState.left) {
+                    currentTapState.left = false;
+                    if (tapStartTime.left !== null) {
+                      const tapDuration = currentTime - tapStartTime.left;
+                      stats.tapTimes.push(tapDuration);
+                      stats.leftTaps++;
+                      stats.totalTaps++;
+                      updateStats(stats);
+                      console.log(`Left tap completed: ${tapDuration.toFixed(2)}s`);
+                    }
+                  }
+
+                  // Right shoulder tap (left hand)
+                  if (rightTapDetected && !currentTapState.right) {
+                    currentTapState.right = true;
+                    tapStartTime.right = currentTime;
+                    giveFeedback("Right shoulder tap detected!", "good-form");
+                  } else if (!rightTapDetected && currentTapState.right) {
+                    currentTapState.right = false;
+                    if (tapStartTime.right !== null) {
+                      const tapDuration = currentTime - tapStartTime.right;
+                      stats.tapTimes.push(tapDuration);
+                      stats.rightTaps++;
+                      stats.totalTaps++;
+                      updateStats(stats);
+                      console.log(`Right tap completed: ${tapDuration.toFixed(2)}s`);
+                    }
+                  }
+
+                  // Provide timing feedback
+                  if (stats.tapTimes.length > 0) {
+                    const lastTapTime = stats.tapTimes[stats.tapTimes.length - 1];
+                    if (lastTapTime < 0.5) {
+                      giveFeedback("Tap too quick - hold for better control", "warning");
+                    } else if (lastTapTime > 2.0) {
+                      giveFeedback("Tap held too long - quicker transitions", "warning");
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error("Error processing frame:", error);
+                stats.formIssues++;
+              }
+            }
+            
+            frame++;
+            
+            if (!video.ended && currentTime < video.duration) {
+              animationFrameId = requestAnimationFrame(processFrame);
+            } else {
+              processFrame();
+            }
+            
+          } catch (error) {
+            console.error("Error in processFrame:", error);
+            document.getElementById('feedback').textContent = "Error during processing";
+            document.getElementById('feedback').className = "error";
+            cleanup();
+            reject(error);
+          }
+        }
+
+        try {
+          await video.play();
+          processFrame();
+        } catch (error) {
+          console.error("Error starting video playback:", error);
+          document.getElementById('feedback').textContent = "Error starting video playback";
+          document.getElementById('feedback').className = "error";
+          cleanup();
+          reject(error);
+        }
+      });
+    }
+
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      if (processing) {
+        console.log("Already processing a video. Please wait.");
+        document.getElementById('feedback').textContent = "Already processing a video. Please wait.";
+        return;
+      }
+      
+      cleanup();
+      
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      document.getElementById('result').textContent = "";
+      document.getElementById('stats').innerHTML = "";
+      document.getElementById('feedback').textContent = "Loading video...";
+      
+      const url = URL.createObjectURL(file);
+      const video = document.getElementById('video');
+      video.src = url;
+      
+      video.onloadeddata = async () => {
+        try {
+          processing = true;
+          console.log("Starting shoulder taps analysis...");
+          const results = await analyzeVideo(video);
+          console.log("Analysis completed with results:", results);
+        } catch (error) {
+          console.error("Video analysis failed:", error);
+          document.getElementById('feedback').textContent = "Video analysis failed: " + error.message;
+          document.getElementById('feedback').className = "error";
+        } finally {
+          processing = false;
+          URL.revokeObjectURL(url);
+        }
+      };
+
+      video.onerror = (error) => {
+        console.error("Video loading error:", error);
+        document.getElementById('feedback').textContent = "Error loading video file";
+        document.getElementById('feedback').className = "error";
+        processing = false;
+        URL.revokeObjectURL(url);
+      };
+    });
+
+    setupPoseLandmarker();
+  </script>
+</body>
+</html>

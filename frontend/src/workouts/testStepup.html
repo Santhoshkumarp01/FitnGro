@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Step-Up Rep Counter with Form Correction (Video Upload, WASM)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #video-container {
+            position: relative;
+            max-width: 100%;
+            margin-bottom: 1em;
+        }
+        #video, #output_canvas {
+            max-width: 100%;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            display: block; /* Ensure no extra space below video */
+        }
+        #output_canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none; /* Allows clicks to pass through to video */
+        }
+        #feedback {
+            font-size: 1.2em;
+            margin-top: 1em;
+            color: #007bff;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        #result {
+            font-size: 1.4em;
+            margin-top: 1em;
+            font-weight: bold;
+            color: #28a745;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #d4edda;
+        }
+        #formFeedback {
+            font-size: 1.1em;
+            margin-top: 1em;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+        .processing { color: #ffc107; background-color: #fff3cd; }
+        .error { color: #dc3545; background-color: #f8d7da; }
+        .good-form { color: #28a745; background-color: #d4edda; }
+        .warning-form { color: #fd7e14; background-color: #fff0e6; }
+        .bad-form { color: #dc3545; background-color: #f8d7da; }
+        .upload-section {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            text-align: center;
+        }
+        input[type="file"] {
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h2>🪜 Step-Up Rep Counter</h2>
+    <div class="upload-section">
+        <input type="file" id="fileInput" accept="video/*">
+        <p>Upload a video of your step-up workout to analyze form and count reps</p>
+    </div>
+
+    <div id="video-container">
+        <video id="video" controls muted></video>
+        <canvas id="output_canvas"></canvas>
+    </div>
+
+    <div id="feedback"></div>
+    <div id="formFeedback"></div>
+    <div id="result"></div>
+
+    <script type="module">
+        import {
+            FilesetResolver,
+            PoseLandmarker,
+            DrawingUtils
+        } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
+
+        let poseLandmarker, vision, processing = false;
+        let animationFrameId = null;
+        let drawingUtils;
+        let canvasCtx;
+
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('output_canvas');
+        canvasCtx = canvas.getContext('2d');
+
+        async function setupPoseLandmarker() {
+            try {
+                vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+                );
+                poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numPoses: 1,
+                    minPoseDetectionConfidence: 0.5,
+                    minPosePresenceConfidence: 0.5,
+                    minTrackingConfidence: 0.5,
+                    outputSegmentationMasks: false,
+                });
+                drawingUtils = new DrawingUtils(canvasCtx);
+                console.log("PoseLandmarker initialized successfully");
+                document.getElementById('feedback').textContent = "Pose detection ready. Upload a video to analyze your step-ups.";
+            } catch (error) {
+                console.error("Failed to initialize PoseLandmarker:", error);
+                document.getElementById('feedback').textContent = "Failed to load pose detection model. Please try refreshing the page.";
+                document.getElementById('feedback').className = "error";
+            }
+        }
+
+        // Helper function to calculate angle between three points
+        function calcAngle(a, b, c) {
+            const ab = Math.hypot(b.x - a.x, b.y - a.y);
+            const bc = Math.hypot(c.x - b.x, c.y - b.y);
+            const ac = Math.hypot(c.x - a.x, c.y - a.y);
+            return Math.acos((ab**2 + bc**2 - ac**2) / (2 * ab * bc)) * (180 / Math.PI);
+        }
+
+        // Helper function to calculate vertical distance between two points
+        function calcVerticalDistance(p1, p2) {
+            // Using normalized coordinates (0 to 1), so larger difference means more separation
+            return Math.abs(p1.y - p2.y);
+        }
+
+        function analyzeStepUpForm(landmarks) {
+            const lm = landmarks[0]; // Assuming single pose
+            const leftHip = lm[23], rightHip = lm[24];
+            const leftKnee = lm[25], rightKnee = lm[26];
+            const leftAnkle = lm[27], rightAnkle = lm[28];
+            const leftShoulder = lm[11], rightShoulder = lm[12];
+            const leftFootIndex = lm[31], rightFootIndex = lm[32]; // For foot contact detection
+
+            // Knee angles (hip-knee-ankle) - smaller angle means more bent
+            const leftKneeAngle = calcAngle(leftHip, leftKnee, leftAnkle);
+            const rightKneeAngle = calcAngle(rightHip, rightKnee, rightAnkle);
+            const avgKneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
+
+            // Hip angles (shoulder-hip-knee) - useful for checking torso lean
+            const leftHipAngle = calcAngle(leftShoulder, leftHip, leftKnee);
+            const rightHipAngle = calcAngle(rightShoulder, rightHip, rightKnee);
+            const avgHipAngle = (leftHipAngle + rightHipAngle) / 2;
+
+            // Vertical position of ankles relative to mid-hip
+            const midHipY = (leftHip.y + rightHip.y) / 2;
+            const leftAnkleRelMidHip = midHipY - leftAnkle.y; // Positive if ankle is above mid-hip
+            const rightAnkleRelMidHip = midHipY - rightAnkle.y; // Positive if ankle is above mid-hip
+
+            // Check if feet are close to being at the same horizontal level (implies both are on the step)
+            // This is a rough estimation and might need tuning
+            const horizontalFootProximity = calcVerticalDistance(leftFootIndex, rightFootIndex);
+
+            return {
+                leftKneeAngle,
+                rightKneeAngle,
+                avgKneeAngle,
+                avgHipAngle,
+                leftAnkleRelMidHip,
+                rightAnkleRelMidHip,
+                horizontalFootProximity // New metric for foot proximity
+            };
+        }
+
+        function getFormFeedback(formData, isSteppingUp, isDownPosition) {
+            const feedbacks = [];
+            let overallForm = "good";
+
+            const {
+                leftKneeAngle,
+                rightKneeAngle,
+                avgKneeAngle,
+                avgHipAngle
+            } = formData;
+
+            if (isDownPosition) {
+                feedbacks.push("✅ Ready position: Standing on ground.");
+            } else if (isSteppingUp) {
+                feedbacks.push("⬆️ Both feet lifted! Focus on balance.");
+
+                // Check for full extension at the top if the user pauses briefly
+                if (avgKneeAngle > 150) { // If knees are almost straight while "up"
+                     feedbacks.push("✅ Good full extension at the top of the step.");
+                }
+
+                 // Check hip lean / torso stability
+                if (avgHipAngle < 155) { // If hip angle is acute, likely leaning forward too much
+                    feedbacks.push("⚠️ Keep torso upright, avoid leaning forward.");
+                    overallForm = "warning";
+                }
+                
+                // Encourage getting both feet fully on the step if one ankle is significantly lower
+                if (Math.abs(formData.leftAnkleRelMidHip - formData.rightAnkleRelMidHip) > 0.1) { // A threshold for difference in ankle height
+                    feedbacks.push("⚠️ Ensure both feet are firmly on the step.");
+                    overallForm = "warning";
+                }
+
+
+            } else {
+                feedbacks.push("Performing step-up. Keep going!");
+                // You could add feedback here for partial lifts or not fully clearing the ground
+            }
+
+            const className = overallForm === "good" ? "good-form" :
+                               overallForm === "warning" ? "warning-form" : "bad-form";
+
+            return {
+                feedback: feedbacks.join(" | "),
+                className: className
+            };
+        }
+
+        function cleanup() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            processing = false;
+        }
+
+        async function analyzeVideo(video) {
+            return new Promise(async (resolve, reject) => {
+                document.getElementById('feedback').textContent = "Processing step-up video...";
+                document.getElementById('feedback').className = "processing";
+                document.getElementById('result').textContent = "";
+                document.getElementById('formFeedback').textContent = "";
+
+                console.log("Processing step-up video...");
+                let reps = 0;
+                let isUp = false; // State: Are both feet considered "up" or off the ground?
+
+                // Define thresholds for step-up detection
+                // These are more about the *state* of the knees/ankles rather than absolute height.
+                const KNEE_BENT_THRESHOLD_UP = 130; // Max knee angle to consider "bent" for being on the step
+                const KNEE_STRAIGHT_THRESHOLD_DOWN = 160; // Min knee angle to consider "straight" for being on the ground
+
+                // A key indicator: Are both ankles significantly higher than their lowest point while stepping?
+                // Or, are both feet off the "ground" level?
+                // This requires tracking a baseline for the ground level.
+                // For simplicity, we'll use hip height as a relative reference for the "up" state of the *ankles*.
+                // And the horizontal proximity of feet on top of the step.
+                const ANKLE_LIFT_THRESHOLD = 0.05; // Normalized Y-coordinate difference (e.g., ankles lifted 5% of video height above baseline)
+                const FOOT_PROXIMITY_THRESHOLD = 0.08; // Normalized Y-coordinate difference for feet to be considered 'together' on step
+
+                let lastFeedback = "";
+                let lastFormFeedback = "";
+
+                // To make the "up" detection flexible, we track the lowest point of the ankles
+                // when the user is assumed to be standing on the ground.
+                let initialAnkleY = { left: -1, right: -1 };
+                let initialHipY = -1;
+                let frameCountAtStart = 0;
+                const INITIAL_FRAMES_FOR_CALIBRATION = 30; // Calibrate for first 30 frames
+
+                if (!poseLandmarker) {
+                    await setupPoseLandmarker();
+                    if (!poseLandmarker) {
+                        const errorMsg = "Error: Could not initialize pose detection.";
+                        document.getElementById('feedback').textContent = errorMsg;
+                        document.getElementById('feedback').className = "error";
+                        console.error(errorMsg);
+                        reject(new Error(errorMsg));
+                        return;
+                    }
+                }
+
+                // Reset video to start
+                video.currentTime = 0;
+                video.muted = true;
+
+                // Wait for video to be ready and set canvas dimensions
+                await new Promise((res) => {
+                    const onCanPlay = () => {
+                        video.removeEventListener('canplay', onCanPlay);
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        res();
+                    };
+                    video.addEventListener('canplay', onCanPlay);
+                    if (video.readyState >= 3) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        res();
+                    }
+                });
+
+                const FRAME_SKIP = 2; // Process every 2nd frame for smoother performance
+                let frame = 0;
+                let lastProcessedTime = -1;
+
+                function giveFeedback(msg) {
+                    if (msg !== lastFeedback) {
+                        document.getElementById('feedback').textContent = msg;
+                        document.getElementById('feedback').className = "processing";
+                        console.log("Feedback:", msg);
+                        lastFeedback = msg;
+                    }
+                }
+
+                function giveFormFeedback(feedback, className) {
+                    if (feedback !== lastFormFeedback) {
+                        document.getElementById('formFeedback').textContent = feedback;
+                        document.getElementById('formFeedback').className = className;
+                        lastFormFeedback = feedback;
+                    }
+                }
+
+                function processFrame() {
+                    try {
+                        // Check if video has ended
+                        if (video.ended || video.currentTime >= video.duration) {
+                            const resultText = `🏁 Analysis Complete!\n💪 Total Step-Ups: ${reps}`;
+                            document.getElementById('result').textContent = resultText;
+                            document.getElementById('feedback').textContent = "Step-up analysis complete!";
+                            document.getElementById('feedback').className = "";
+                            document.getElementById('formFeedback').textContent = "";
+                            console.log("Analysis complete.");
+                            console.log("Final Results:", resultText);
+
+                            video.pause();
+                            cleanup();
+                            resolve({ reps });
+                            return;
+                        }
+
+                        // Process every nth frame
+                        if (frame % FRAME_SKIP === 0 && video.currentTime !== lastProcessedTime) {
+                            lastProcessedTime = video.currentTime;
+
+                            try {
+                                const results = poseLandmarker.detectForVideo(video, performance.now());
+                                canvasCtx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous drawings
+
+                                if (results.landmarks && results.landmarks.length > 0) {
+                                    drawingUtils.drawConnectors(
+                                        results.landmarks[0],
+                                        PoseLandmarker.POSE_CONNECTIONS,
+                                        { color: '#00FF00', lineWidth: 4 }
+                                    );
+                                    drawingUtils.drawLandmarks(results.landmarks[0], {
+                                        radius: (landmarker) => DrawingUtils.lerp(landmarker.score, 0.1, 0.5, 8)
+                                    });
+
+                                    const formData = analyzeStepUpForm(results.landmarks);
+                                    const lm = results.landmarks[0]; // For direct landmark access
+                                    const leftAnkle = lm[27], rightAnkle = lm[28];
+
+                                    // --- Dynamic Calibration for "Ground" Level ---
+                                    if (frameCountAtStart < INITIAL_FRAMES_FOR_CALIBRATION) {
+                                        if (initialAnkleY.left === -1 || leftAnkle.y < initialAnkleY.left) {
+                                            initialAnkleY.left = leftAnkle.y;
+                                        }
+                                        if (initialAnkleY.right === -1 || rightAnkle.y < initialAnkleY.right) {
+                                            initialAnkleY.right = rightAnkle.y;
+                                        }
+                                        if (initialHipY === -1 || ((lm[23].y + lm[24].y)/2) < initialHipY) {
+                                            initialHipY = (lm[23].y + lm[24].y)/2;
+                                        }
+                                        frameCountAtStart++;
+                                        giveFeedback("Calibrating initial standing position...");
+                                        giveFormFeedback("Stand still at the start of the video for best results.", "processing");
+                                    } else {
+                                        // --- Step-up detection logic (more flexible) ---
+                                        // Condition for being "up":
+                                        // 1. Both ankles are significantly higher than their calibrated "ground" level.
+                                        // 2. Both knees are reasonably bent (avgKneeAngle < KNEE_BENT_THRESHOLD_UP).
+                                        // 3. (Optional but good) Feet are horizontally close, indicating they are on the same platform.
+                                        const bothAnklesLifted = (leftAnkle.y < initialAnkleY.left - ANKLE_LIFT_THRESHOLD) &&
+                                                                  (rightAnkle.y < initialAnkleY.right - ANKLE_LIFT_THRESHOLD);
+                                        
+                                        // Using hip height change can also be an indicator if the entire body is lifted
+                                        const bodyLifted = ((lm[23].y + lm[24].y)/2) < initialHipY - ANKLE_LIFT_THRESHOLD * 2; // More lift for hip
+
+                                        const currentlyUp = (formData.avgKneeAngle < KNEE_BENT_THRESHOLD_UP || bodyLifted) && // At least one indicator of upward movement
+                                                            (leftAnkle.y < initialAnkleY.left - ANKLE_LIFT_THRESHOLD * 0.5 || // One ankle significantly lifted
+                                                             rightAnkle.y < initialAnkleY.right - ANKLE_LIFT_THRESHOLD * 0.5) &&
+                                                            (formData.horizontalFootProximity < FOOT_PROXIMITY_THRESHOLD); // Feet are near each other horizontally
+
+                                        // Condition for being "down":
+                                        // Both knees are relatively straight AND both ankles are near the calibrated "ground" level.
+                                        const currentlyDown = (formData.avgKneeAngle > KNEE_STRAIGHT_THRESHOLD_DOWN) &&
+                                                              (leftAnkle.y > initialAnkleY.left - ANKLE_LIFT_THRESHOLD * 0.2) && // Allow a small buffer
+                                                              (rightAnkle.y > initialAnkleY.right - ANKLE_LIFT_THRESHOLD * 0.2);
+
+
+                                        if (!isUp && currentlyUp) {
+                                            isUp = true;
+                                            giveFeedback("⬆️ Lifting up!");
+                                        } else if (isUp && currentlyDown) {
+                                            isUp = false;
+                                            reps++;
+                                            giveFeedback(`⬇️ Rep completed: ${reps}`);
+                                        } else if (!isUp && !currentlyDown) {
+                                            // Neither fully up nor fully down - could be mid-step or partial
+                                            giveFeedback("🚶‍♀️ Stepping...");
+                                        }
+
+                                        // Form feedback
+                                        const formFeedback = getFormFeedback(formData, currentlyUp, currentlyDown);
+                                        giveFormFeedback(formFeedback.feedback, formFeedback.className);
+                                    }
+                                } else {
+                                    giveFeedback("🧍‍♂️ No pose detected. Ensure you are fully visible.");
+                                    giveFormFeedback("Adjust position for better detection.", "warning-form");
+                                }
+                            } catch (error) {
+                                console.error("Error processing frame:", error);
+                            }
+                        }
+
+                        frame++;
+
+                        // Continue processing
+                        if (!video.ended && video.currentTime < video.duration) {
+                            animationFrameId = requestAnimationFrame(processFrame);
+                        } else {
+                            // Ensure final state is processed if video ended mid-frame-skip
+                            processFrame();
+                        }
+
+                    } catch (error) {
+                        console.error("Error in processFrame:", error);
+                        document.getElementById('feedback').textContent = "Error during processing";
+                        document.getElementById('feedback').className = "error";
+                        cleanup();
+                        reject(error);
+                    }
+                }
+
+                // Start processing
+                try {
+                    await video.play();
+                    processFrame();
+                } catch (error) {
+                    console.error("Error starting video playback:", error);
+                    document.getElementById('feedback').textContent = "Error starting video playback";
+                    document.getElementById('feedback').className = "error";
+                    cleanup();
+                    reject(error);
+                }
+            });
+        }
+
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            if (processing) {
+                console.log("Already processing a video. Please wait.");
+                document.getElementById('feedback').textContent = "Already processing a video. Please wait.";
+                return;
+            }
+
+            cleanup();
+
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Clear previous results
+            document.getElementById('result').textContent = "";
+            document.getElementById('feedback').textContent = "Loading step-up video...";
+            document.getElementById('formFeedback').textContent = "";
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+
+            const url = URL.createObjectURL(file);
+            video.src = url;
+
+            video.onloadeddata = async () => {
+                try {
+                    processing = true;
+                    console.log("Starting step-up analysis...");
+                    const results = await analyzeVideo(video);
+                    console.log("Step-up analysis completed with results:", results);
+                } catch (error) {
+                    console.error("Step-up analysis failed:", error);
+                    document.getElementById('feedback').textContent = "Step-up analysis failed: " + error.message;
+                    document.getElementById('feedback').className = "error";
+                } finally {
+                    processing = false;
+                    URL.revokeObjectURL(url);
+                }
+            };
+
+            video.onerror = (error) => {
+                console.error("Video loading error:", error);
+                document.getElementById('feedback').textContent = "Error loading video file";
+                document.getElementById('feedback').className = "error";
+                processing = false;
+                URL.revokeObjectURL(url);
+            };
+        });
+
+        // Initialize the pose landmarker on page load
+        setupPoseLandmarker();
+    </script>
+</body>
+</html>

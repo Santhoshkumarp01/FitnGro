@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wall Sit Timer with Form Detection</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    #video { 
+      max-width: 100%; 
+      margin-bottom: 1em; 
+      border: 2px solid #ddd;
+      border-radius: 8px;
+    }
+    #feedback { 
+      font-size: 1.2em; 
+      margin-top: 1em; 
+      padding: 10px;
+      border-radius: 5px;
+      background-color: #f8f9fa;
+    }
+    #result { 
+      font-size: 1.4em; 
+      margin-top: 1em; 
+      font-weight: bold; 
+      padding: 15px;
+      border-radius: 8px;
+      background-color: #e8f5e8;
+    }
+    .processing { 
+      color: #ffc107; 
+      background-color: #fff3cd;
+    }
+    .error { 
+      color: #dc3545; 
+      background-color: #f8d7da;
+    }
+    .good-form {
+      color: #28a745;
+      background-color: #d4edda;
+    }
+    .bad-form {
+      color: #dc3545;
+      background-color: #f8d7da;
+    }
+    .timer {
+      font-size: 2em;
+      text-align: center;
+      margin: 20px 0;
+      padding: 20px;
+      background-color: #007bff;
+      color: white;
+      border-radius: 10px;
+    }
+    .form-tips {
+      background-color: #e3f2fd;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .form-tips h3 {
+      margin-top: 0;
+      color: #1976d2;
+    }
+    .form-tips ul {
+      margin: 10px 0;
+    }
+    .debug-info {
+      background-color: #f0f0f0;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+      font-size: 0.9em;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h2>Wall Sit Timer with Form Detection</h2>
+  
+  <div class="form-tips">
+    <h3>Proper Wall Sit Form:</h3>
+    <ul>
+      <li>Back flat against the wall</li>
+      <li>Thighs parallel to the ground (90-degree angle at knees)</li>
+      <li>Feet shoulder-width apart</li>
+      <li>Knees aligned over ankles (not extending past toes)</li>
+      <li>Core engaged and chest up</li>
+      <li>Arms can be at sides or crossed over chest</li>
+    </ul>
+  </div>
+
+  <input type="file" id="fileInput" accept="video/*">
+  <video id="video" controls muted></video>
+  
+  <div id="timer" class="timer">00:00</div>
+  <div id="feedback"></div>
+  <div id="debug" class="debug-info"></div>
+  <div id="result"></div>
+
+  <script type="module">
+    import {
+      FilesetResolver,
+      PoseLandmarker,
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
+
+    let poseLandmarker, vision, processing = false;
+    let animationFrameId = null;
+    let wallSitStartTime = null;
+    let totalWallSitTime = 0;
+    let isInWallSitPosition = false;
+    let lastPositionCheck = 0;
+    let consecutiveGoodFrames = 0;
+    let consecutiveBadFrames = 0;
+    const REQUIRED_GOOD_FRAMES = 3; // Require 3 consecutive good frames to start timing
+    const REQUIRED_BAD_FRAMES = 5; // Require 5 consecutive bad frames to stop timing
+
+    async function setupPoseLandmarker() {
+      try {
+        vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+        );
+        poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          numPoses: 1,
+          minPoseDetectionConfidence: 0.3,
+          minPosePresenceConfidence: 0.3,
+          minTrackingConfidence: 0.3,
+          outputSegmentationMasks: false,
+        });
+        console.log("PoseLandmarker initialized successfully");
+        document.getElementById('feedback').textContent = "Pose detection ready. Upload a video to analyze your wall sit form.";
+      } catch (error) {
+        console.error("Failed to initialize PoseLandmarker:", error);
+        document.getElementById('feedback').textContent = "Failed to load pose detection model. Please try refreshing the page.";
+        document.getElementById('feedback').className = "error";
+      }
+    }
+
+    function calcAngle(a, b, c) {
+      const ab = Math.hypot(b.x - a.x, b.y - a.y);
+      const bc = Math.hypot(c.x - b.x, c.y - b.y);
+      const ac = Math.hypot(c.x - a.x, c.y - a.y);
+      const angle = Math.acos((ab**2 + bc**2 - ac**2) / (2 * ab * bc)) * (180 / Math.PI);
+      return isNaN(angle) ? 180 : angle;
+    }
+
+    function calculateDistance(point1, point2) {
+      return Math.hypot(point2.x - point1.x, point2.y - point1.y);
+    }
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function updateTimer(currentTime) {
+      const timerElement = document.getElementById('timer');
+      if (isInWallSitPosition && wallSitStartTime !== null) {
+        const elapsed = currentTime - wallSitStartTime;
+        timerElement.textContent = formatTime(elapsed);
+      } else {
+        timerElement.textContent = formatTime(totalWallSitTime);
+      }
+    }
+
+    function analyzeWallSitForm(landmarks) {
+      const lm = landmarks[0];
+      
+      // Key body points for wall sit analysis
+      const nose = lm[0];
+      const leftShoulder = lm[11];
+      const rightShoulder = lm[12];
+      const leftHip = lm[23];
+      const rightHip = lm[24];
+      const leftKnee = lm[25];
+      const rightKnee = lm[26];
+      const leftAnkle = lm[27];
+      const rightAnkle = lm[28];
+      const leftHeel = lm[29];
+      const rightHeel = lm[30];
+
+      // Calculate average positions
+      const avgShoulder = { x: (leftShoulder.x + rightShoulder.x) / 2, y: (leftShoulder.y + rightShoulder.y) / 2 };
+      const avgHip = { x: (leftHip.x + rightHip.x) / 2, y: (leftHip.y + rightHip.y) / 2 };
+      const avgKnee = { x: (leftKnee.x + rightKnee.x) / 2, y: (leftKnee.y + rightKnee.y) / 2 };
+      const avgAnkle = { x: (leftAnkle.x + rightAnkle.x) / 2, y: (leftAnkle.y + rightAnkle.y) / 2 };
+
+      // Calculate knee angles (hip-knee-ankle)
+      const leftKneeAngle = calcAngle(leftHip, leftKnee, leftAnkle);
+      const rightKneeAngle = calcAngle(rightHip, rightKnee, rightAnkle);
+      const avgKneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
+
+      // Calculate hip angles (shoulder-hip-knee) to check for sitting position
+      const leftHipAngle = calcAngle(leftShoulder, leftHip, leftKnee);
+      const rightHipAngle = calcAngle(rightShoulder, rightHip, rightKnee);
+      const avgHipAngle = (leftHipAngle + rightHipAngle) / 2;
+
+      // Check if person is in sitting position (thighs should be roughly horizontal)
+      const thighAngle = Math.atan2(avgKnee.y - avgHip.y, avgKnee.x - avgHip.x) * (180 / Math.PI);
+      const isThighHorizontal = Math.abs(thighAngle) < 20; // Allow 20 degrees deviation from horizontal
+
+      // Check if back is upright (shoulders roughly above hips)
+      const backStraight = Math.abs(avgShoulder.x - avgHip.x) < 0.1; // Back should be relatively straight
+
+      // Check if knees are at proper 90-degree angle (85-95 degrees acceptable)
+      const kneeAngleGood = avgKneeAngle >= 75 && avgKneeAngle <= 105;
+
+      // Check if person is low enough (hip should be at knee level or lower)
+      const hipLowEnough = avgHip.y >= avgKnee.y - 0.05;
+
+      // Check if knees are not extending past toes (ankle should be behind knee)
+      const kneesAligned = avgAnkle.x <= avgKnee.x + 0.05;
+
+      // Check if person appears to be against a wall (back position stability)
+      const torsoUpright = avgShoulder.y < avgHip.y; // Shoulders above hips
+
+      // Core wall sit requirements
+      const isInWallSit = kneeAngleGood && hipLowEnough && torsoUpright && backStraight;
+
+      // Debug information
+      const debugInfo = {
+        leftKneeAngle: leftKneeAngle.toFixed(1),
+        rightKneeAngle: rightKneeAngle.toFixed(1),
+        avgKneeAngle: avgKneeAngle.toFixed(1),
+        thighAngle: thighAngle.toFixed(1),
+        isThighHorizontal,
+        backStraight,
+        kneeAngleGood,
+        hipLowEnough,
+        kneesAligned,
+        torsoUpright,
+        hipY: avgHip.y.toFixed(3),
+        kneeY: avgKnee.y.toFixed(3),
+        shoulderX: avgShoulder.x.toFixed(3),
+        hipX: avgHip.x.toFixed(3)
+      };
+
+      // Form feedback
+      let formFeedback = [];
+      let isGoodForm = true;
+
+      // Check knee angle
+      if (!kneeAngleGood) {
+        if (avgKneeAngle < 75) {
+          formFeedback.push("Sit higher - your knees are too bent");
+        } else {
+          formFeedback.push("Sit lower - aim for 90-degree knee angle");
+        }
+        isGoodForm = false;
+      }
+
+      // Check if sitting low enough
+      if (!hipLowEnough) {
+        formFeedback.push("Sit lower - thighs should be parallel to ground");
+        isGoodForm = false;
+      }
+
+      // Check back position
+      if (!backStraight) {
+        formFeedback.push("Keep your back flat against the wall");
+        isGoodForm = false;
+      }
+
+      // Check torso position
+      if (!torsoUpright) {
+        formFeedback.push("Keep your torso upright");
+        isGoodForm = false;
+      }
+
+      // Check knee alignment
+      if (!kneesAligned) {
+        formFeedback.push("Don't let knees extend past your toes");
+      }
+
+      if (formFeedback.length === 0) {
+        formFeedback.push("Perfect wall sit form! Keep it up!");
+      }
+
+      return {
+        isInWallSit: isInWallSit,
+        isGoodForm: isInWallSit && kneesAligned,
+        feedback: formFeedback,
+        debug: debugInfo
+      };
+    }
+
+    function giveFeedback(analysis, currentVideoTime) {
+      const feedbackElement = document.getElementById('feedback');
+      const debugElement = document.getElementById('debug');
+      
+      // Display debug information
+      debugElement.innerHTML = `
+        Debug Info:<br>
+        Left Knee Angle: ${analysis.debug.leftKneeAngle}°<br>
+        Right Knee Angle: ${analysis.debug.rightKneeAngle}°<br>
+        Avg Knee Angle: ${analysis.debug.avgKneeAngle}°<br>
+        Knee angle good: ${analysis.debug.kneeAngleGood ? 'Yes' : 'No'}<br>
+        Hip low enough: ${analysis.debug.hipLowEnough ? 'Yes' : 'No'}<br>
+        Back straight: ${analysis.debug.backStraight ? 'Yes' : 'No'}<br>
+        Torso upright: ${analysis.debug.torsoUpright ? 'Yes' : 'No'}<br>
+        Knees aligned: ${analysis.debug.kneesAligned ? 'Yes' : 'No'}<br>
+        In wall sit: ${analysis.isInWallSit ? 'Yes' : 'No'}
+      `;
+      
+      if (analysis.isInWallSit) {
+        consecutiveGoodFrames++;
+        consecutiveBadFrames = 0;
+        
+        feedbackElement.textContent = analysis.feedback.join(", ");
+        feedbackElement.className = "good-form";
+        
+        // Start timing after consecutive good frames
+        if (!isInWallSitPosition && consecutiveGoodFrames >= REQUIRED_GOOD_FRAMES) {
+          wallSitStartTime = currentVideoTime;
+          isInWallSitPosition = true;
+          console.log("Wall sit started at:", wallSitStartTime);
+        }
+      } else {
+        consecutiveBadFrames++;
+        consecutiveGoodFrames = 0;
+        
+        feedbackElement.textContent = analysis.feedback.join(", ");
+        feedbackElement.className = "bad-form";
+        
+        // Stop timing after consecutive bad frames
+        if (isInWallSitPosition && consecutiveBadFrames >= REQUIRED_BAD_FRAMES) {
+          if (wallSitStartTime !== null) {
+            totalWallSitTime += currentVideoTime - wallSitStartTime;
+            wallSitStartTime = null;
+            isInWallSitPosition = false;
+            console.log("Wall sit ended. Total time so far:", totalWallSitTime);
+          }
+        }
+      }
+    }
+
+    function cleanup() {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      processing = false;
+      // Reset timing variables
+      wallSitStartTime = null;
+      totalWallSitTime = 0;
+      isInWallSitPosition = false;
+      consecutiveGoodFrames = 0;
+      consecutiveBadFrames = 0;
+    }
+
+    async function analyzeVideo(video) {
+      return new Promise(async (resolve, reject) => {
+        document.getElementById('feedback').textContent = "Processing video...";
+        document.getElementById('feedback').className = "processing";
+        document.getElementById('result').textContent = "";
+        
+        console.log("Processing video...");
+        
+        // Reset timing variables
+        wallSitStartTime = null;
+        totalWallSitTime = 0;
+        isInWallSitPosition = false;
+        consecutiveGoodFrames = 0;
+        consecutiveBadFrames = 0;
+
+        if (!poseLandmarker) {
+          await setupPoseLandmarker();
+          if (!poseLandmarker) {
+            const errorMsg = "Error: Could not initialize pose detection.";
+            document.getElementById('feedback').textContent = errorMsg;
+            document.getElementById('feedback').className = "error";
+            console.error(errorMsg);
+            reject(new Error(errorMsg));
+            return;
+          }
+        }
+
+        // Reset video to start
+        video.currentTime = 0;
+        video.muted = true;
+        
+        // Wait for video to be ready
+        await new Promise((res) => {
+          const onCanPlay = () => {
+            video.removeEventListener('canplay', onCanPlay);
+            res();
+          };
+          video.addEventListener('canplay', onCanPlay);
+          if (video.readyState >= 3) {
+            res();
+          }
+        });
+
+        const FRAME_SKIP = 1; // Process more frames for better accuracy
+        let frame = 0;
+        let lastProcessedTime = -1;
+
+        function processFrame() {
+          try {
+            const currentVideoTime = video.currentTime;
+            
+            // Check if video has ended
+            if (video.ended || currentVideoTime >= video.duration) {
+              // If was in wall sit position when video ended, add remaining time
+              if (isInWallSitPosition && wallSitStartTime !== null) {
+                totalWallSitTime += currentVideoTime - wallSitStartTime;
+              }
+              
+              const resultText = `Wall Sit Analysis Complete!\nTotal wall sit time: ${formatTime(totalWallSitTime)}`;
+              document.getElementById('result').textContent = resultText;
+              document.getElementById('feedback').textContent = "Analysis complete.";
+              document.getElementById('feedback').className = "";
+              document.getElementById('timer').textContent = formatTime(totalWallSitTime);
+              console.log("Analysis complete. Total wall sit time:", totalWallSitTime);
+              
+              video.pause();
+              cleanup();
+              resolve({ totalTime: totalWallSitTime });
+              return;
+            }
+
+            // Process every nth frame
+            if (frame % FRAME_SKIP === 0 && currentVideoTime !== lastProcessedTime) {
+              lastProcessedTime = currentVideoTime;
+              
+              try {
+                const results = poseLandmarker.detectForVideo(video, performance.now());
+                if (results.landmarks && results.landmarks.length > 0) {
+                  const analysis = analyzeWallSitForm(results.landmarks);
+                  giveFeedback(analysis, currentVideoTime);
+                  updateTimer(currentVideoTime);
+                }
+              } catch (error) {
+                console.error("Error processing frame:", error);
+              }
+            }
+            
+            frame++;
+            
+            // Continue processing
+            if (!video.ended && currentVideoTime < video.duration) {
+              animationFrameId = requestAnimationFrame(processFrame);
+            } else {
+              processFrame();
+            }
+            
+          } catch (error) {
+            console.error("Error in processFrame:", error);
+            document.getElementById('feedback').textContent = "Error during processing";
+            document.getElementById('feedback').className = "error";
+            cleanup();
+            reject(error);
+          }
+        }
+
+        // Start processing
+        try {
+          await video.play();
+          processFrame();
+        } catch (error) {
+          console.error("Error starting video playback:", error);
+          document.getElementById('feedback').textContent = "Error starting video playback";
+          document.getElementById('feedback').className = "error";
+          cleanup();
+          reject(error);
+        }
+      });
+    }
+
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      if (processing) {
+        console.log("Already processing a video. Please wait.");
+        document.getElementById('feedback').textContent = "Already processing a video. Please wait.";
+        return;
+      }
+      
+      cleanup();
+      
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      // Clear previous results
+      document.getElementById('result').textContent = "";
+      document.getElementById('feedback').textContent = "Loading video...";
+      document.getElementById('timer').textContent = "00:00";
+      document.getElementById('debug').textContent = "";
+      
+      const url = URL.createObjectURL(file);
+      const video = document.getElementById('video');
+      video.src = url;
+      
+      video.onloadeddata = async () => {
+        try {
+          processing = true;
+          console.log("Starting wall sit analysis...");
+          const results = await analyzeVideo(video);
+          console.log("Analysis completed with results:", results);
+        } catch (error) {
+          console.error("Video analysis failed:", error);
+          document.getElementById('feedback').textContent = "Video analysis failed: " + error.message;
+          document.getElementById('feedback').className = "error";
+        } finally {
+          processing = false;
+          URL.revokeObjectURL(url);
+        }
+      };
+
+      video.onerror = (error) => {
+        console.error("Video loading error:", error);
+        document.getElementById('feedback').textContent = "Error loading video file";
+        document.getElementById('feedback').className = "error";
+        processing = false;
+        URL.revokeObjectURL(url);
+      };
+    });
+
+    // Initialize the pose landmarker on page load
+    setupPoseLandmarker();
+  </script>
+</body>
+</html>

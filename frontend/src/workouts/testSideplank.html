@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Side Plank Timer with Form Correction (Video Upload, WASM)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #video {
+            max-width: 100%;
+            margin-bottom: 1em;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+        #feedback {
+            font-size: 1.2em;
+            margin-top: 1em;
+            color: #007bff;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        #result {
+            font-size: 1.4em;
+            margin-top: 1em;
+            font-weight: bold;
+            color: #28a745;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #d4edda;
+        }
+        #formFeedback {
+            font-size: 1.1em;
+            margin-top: 1em;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+        .processing { color: #ffc107; background-color: #fff3cd; }
+        .error { color: #dc3545; background-color: #f8d7da; }
+        .good-form { color: #28a745; background-color: #d4edda; }
+        .warning-form { color: #fd7e14; background-color: #fff0e6; }
+        .bad-form { color: #dc3545; background-color: #f8d7da; }
+        .upload-section {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            text-align: center;
+        }
+        input[type="file"] {
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h2>🤸 Side Plank Timer with Form Correction</h2>
+    <div class="upload-section">
+        <input type="file" id="fileInput" accept="video/*">
+        <p>Upload a video of your side plank workout to analyze form and time your hold.</p>
+    </div>
+
+    <video id="video" controls muted></video>
+    <div id="feedback"></div>
+    <div id="formFeedback"></div>
+    <div id="result"></div>
+
+    <script type="module">
+        import {
+            FilesetResolver,
+            PoseLandmarker,
+        } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
+
+        let poseLandmarker, vision, processing = false;
+        let animationFrameId = null;
+
+        async function setupPoseLandmarker() {
+            try {
+                vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+                );
+                poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numPoses: 1,
+                    minPoseDetectionConfidence: 0.5,
+                    minPosePresenceConfidence: 0.5,
+                    minTrackingConfidence: 0.5,
+                    outputSegmentationMasks: false,
+                });
+                console.log("PoseLandmarker initialized successfully");
+                document.getElementById('feedback').textContent = "Pose detection ready. Upload a video to analyze your side plank.";
+            } catch (error) {
+                console.error("Failed to initialize PoseLandmarker:", error);
+                document.getElementById('feedback').textContent = "Failed to load pose detection model. Please try refreshing the page.";
+                document.getElementById('feedback').className = "error";
+            }
+        }
+
+        // Helper function to calculate angle between three points
+        function calcAngle(a, b, c) {
+            const ab = Math.hypot(b.x - a.x, b.y - a.y);
+            const bc = Math.hypot(c.x - b.x, c.y - b.y);
+            const ac = Math.hypot(c.x - a.x, c.y - a.y);
+            return Math.acos((ab**2 + bc**2 - ac**2) / (2 * ab * bc)) * (180 / Math.PI);
+        }
+
+        function analyzeSidePlankForm(landmarks) {
+            // We assume the user is facing sideways, so we'll pick one side (e.g., left)
+            // You might need to adjust based on which side the user performs the plank.
+            // For simplicity, we'll try to find the "active" side by checking hip and shoulder visibility.
+
+            // Key points for side plank: Shoulder, Hip, Ankle
+            const leftShoulder = landmarks[0][11];
+            const leftHip = landmarks[0][23];
+            const leftAnkle = landmarks[0][27];
+
+            const rightShoulder = landmarks[0][12];
+            const rightHip = landmarks[0][24];
+            const rightAnkle = landmarks[0][28];
+
+            let activeShoulder, activeHip, activeAnkle;
+
+            // Determine which side is likely facing the camera for the plank
+            // A simple heuristic: the side with a lower X coordinate (left) is often visible if facing right,
+            // or higher X coordinate (right) if facing left. We'll prioritize points with higher visibility score.
+            // However, for side planks, it's more about the alignment of the visible side.
+            // Let's assume the user is performing a plank on their left side (left elbow down, left side facing camera)
+            // or right side (right elbow down, right side facing camera).
+
+            // We need to pick one side's landmarks for analysis.
+            // A common side plank involves one elbow on the ground, so let's look at the hip-shoulder-ankle line.
+            // For a perfect side plank, these three points should ideally form a straight line (180 degrees).
+
+            // Let's calculate angles for both sides and pick the one that's closer to being "plank-like" or has better confidence.
+            // For simplicity, we'll assume the user is performing the plank with their side facing the camera.
+            // The main angle to check is the line from ankle to hip to shoulder.
+
+            let hipShoulderAngle = 0; // The primary angle to check for straight body line
+            let hipHeightRatio = 0;   // To check for hip sagging/raising too much
+
+            // If a shoulder and hip are detected for one side, use that.
+            // This is a simplification; a real app might ask the user which side they are doing.
+            if (leftShoulder && leftHip && leftAnkle) {
+                hipShoulderAngle = calcAngle(leftAnkle, leftHip, leftShoulder);
+                hipHeightRatio = (leftHip.y - leftAnkle.y) / (leftShoulder.y - leftAnkle.y); // Rough ratio to check hip position
+            } else if (rightShoulder && rightHip && rightAnkle) {
+                hipShoulderAngle = calcAngle(rightAnkle, rightHip, rightShoulder);
+                hipHeightRatio = (rightHip.y - rightAnkle.y) / (rightShoulder.y - rightAnkle.y);
+            } else {
+                // Not enough landmarks detected for a side plank.
+                return {
+                    isDetected: false,
+                    hipShoulderAngle: null,
+                    hipHeightRatio: null
+                };
+            }
+
+            return {
+                isDetected: true,
+                hipShoulderAngle: hipShoulderAngle,
+                hipHeightRatio: hipHeightRatio
+            };
+        }
+
+        function getFormFeedback(formData) {
+            const feedbacks = [];
+            let overallForm = "good";
+
+            if (!formData.isDetected) {
+                return { feedback: "No clear side plank pose detected. Ensure your side is facing the camera.", className: "warning-form" };
+            }
+
+            // Hip-Shoulder-Ankle alignment (should be close to 180 degrees for a straight body)
+            const angle = formData.hipShoulderAngle;
+            if (angle > 170 && angle <= 185) { // Allowing a small range around 180
+                feedbacks.push("✅ Straight body line!");
+            } else if (angle > 185) {
+                feedbacks.push("🔻 Hips too high - lower your hips slightly.");
+                overallForm = "warning";
+            } else if (angle <= 170 && angle > 150) {
+                feedbacks.push("⚠️ Slight hip sag - engage your core more!");
+                overallForm = "warning";
+            } else if (angle <= 150) {
+                feedbacks.push("❌ Significant hip sag - lift your hips!");
+                overallForm = "bad";
+            }
+
+            // Hip height ratio (a rough check for maintaining height)
+            // This threshold needs tuning based on typical body proportions,
+            // or better, normalized distances.
+            const hipRatio = formData.hipHeightRatio;
+            if (hipRatio > 0.4 && hipRatio < 0.6) { // Ideal ratio where hip is roughly midway between ankle and shoulder vertically
+                 // Already covered by angle, this is more for redundancy or specific sag.
+            } else if (hipRatio <= 0.4) {
+                 // This would mean hip is very low.
+                 if (overallForm !== "bad") { // Avoid redundant "bad" feedback if already flagged by angle
+                    feedbacks.push("❌ Hips are too low - lift them up!");
+                    overallForm = "bad";
+                 }
+            } else if (hipRatio >= 0.6) {
+                 // This would mean hips are very high.
+                 if (overallForm !== "warning" && overallForm !== "bad") { // Avoid redundant "warning" feedback
+                    feedbacks.push("⚠️ Hips are too high - align your body.");
+                    overallForm = "warning";
+                 }
+            }
+
+
+            const className = overallForm === "good" ? "good-form" :
+                              overallForm === "warning" ? "warning-form" : "bad-form";
+
+            return {
+                feedback: feedbacks.join(" | "),
+                className: className
+            };
+        }
+
+        function cleanup() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            processing = false;
+        }
+
+        async function analyzeVideo(video) {
+            return new Promise(async (resolve, reject) => {
+                document.getElementById('feedback').textContent = "Processing side plank video...";
+                document.getElementById('feedback').className = "processing";
+                document.getElementById('result').textContent = "";
+                document.getElementById('formFeedback').textContent = "";
+
+                console.log("Processing side plank video...");
+                let holdDuration = 0; // Total time in good form (milliseconds)
+                let isHoldingPlank = false;
+                let plankStartTime = 0;
+                let lastFrameTime = 0;
+                let lastFeedback = "";
+                let lastFormFeedback = "";
+
+                // Form thresholds
+                const GOOD_FORM_ANGLE_MIN = 170; // Angle for a straight body line (ankle-hip-shoulder)
+                const GOOD_FORM_ANGLE_MAX = 185;
+
+                if (!poseLandmarker) {
+                    await setupPoseLandmarker();
+                    if (!poseLandmarker) {
+                        const errorMsg = "Error: Could not initialize pose detection.";
+                        document.getElementById('feedback').textContent = errorMsg;
+                        document.getElementById('feedback').className = "error";
+                        console.error(errorMsg);
+                        reject(new Error(errorMsg));
+                        return;
+                    }
+                }
+
+                video.currentTime = 0;
+                video.muted = true;
+
+                await new Promise((res) => {
+                    const onCanPlay = () => {
+                        video.removeEventListener('canplay', onCanPlay);
+                        res();
+                    };
+                    video.addEventListener('canplay', onCanPlay);
+                    if (video.readyState >= 3) {
+                        res();
+                    }
+                });
+
+                const FRAME_SKIP = 3;
+                let frame = 0;
+                let lastProcessedTime = -1;
+
+                function giveFeedback(msg) {
+                    if (msg !== lastFeedback) {
+                        document.getElementById('feedback').textContent = msg;
+                        document.getElementById('feedback').className = "processing";
+                        console.log("Feedback:", msg);
+                        lastFeedback = msg;
+                    }
+                }
+
+                function giveFormFeedback(feedback, className) {
+                    if (feedback !== lastFormFeedback) {
+                        document.getElementById('formFeedback').textContent = feedback;
+                        document.getElementById('formFeedback').className = className;
+                        lastFormFeedback = feedback;
+                    }
+                }
+
+                function processFrame() {
+                    try {
+                        if (video.ended || video.currentTime >= video.duration) {
+                            const totalSeconds = Math.round(holdDuration / 1000);
+                            const resultText = `🏁 Analysis Complete!\n⏱️ Good form hold: ${totalSeconds} seconds`;
+                            document.getElementById('result').textContent = resultText;
+                            document.getElementById('feedback').textContent = "Side plank analysis complete!";
+                            document.getElementById('feedback').className = "";
+                            document.getElementById('formFeedback').textContent = "";
+                            console.log("Analysis complete.");
+                            console.log("Final Results:", resultText);
+
+                            video.pause();
+                            cleanup();
+                            resolve({ holdDuration: totalSeconds });
+                            return;
+                        }
+
+                        if (frame % FRAME_SKIP === 0 && video.currentTime !== lastProcessedTime) {
+                            lastProcessedTime = video.currentTime;
+                            const currentVideoTimeMs = video.currentTime * 1000;
+
+                            try {
+                                const results = poseLandmarker.detectForVideo(video, performance.now());
+                                if (results.landmarks && results.landmarks.length > 0) {
+                                    const formData = analyzeSidePlankForm(results.landmarks);
+                                    let currentFormState = "bad"; // Assume bad until proven good
+
+                                    if (formData.isDetected) {
+                                        // Check for good form based on hip-shoulder-ankle angle
+                                        if (formData.hipShoulderAngle >= GOOD_FORM_ANGLE_MIN && formData.hipShoulderAngle <= GOOD_FORM_ANGLE_MAX) {
+                                            currentFormState = "good";
+                                        } else if (formData.hipShoulderAngle > GOOD_FORM_ANGLE_MAX + 10 || formData.hipShoulderAngle < GOOD_FORM_ANGLE_MIN - 10) {
+                                             currentFormState = "bad";
+                                        } else {
+                                            currentFormState = "warning"; // Within a broader acceptable range but not perfect
+                                        }
+                                    } else {
+                                        currentFormState = "not-detected";
+                                    }
+
+                                    const formFeedback = getFormFeedback(formData);
+                                    giveFormFeedback(formFeedback.feedback, formFeedback.className);
+
+                                    if (currentFormState === "good") {
+                                        if (!isHoldingPlank) {
+                                            isHoldingPlank = true;
+                                            plankStartTime = currentVideoTimeMs;
+                                            giveFeedback("🟢 Holding plank with good form!");
+                                        }
+                                        holdDuration += (currentVideoTimeMs - (plankStartTime > 0 ? plankStartTime : lastProcessedTime));
+                                        plankStartTime = currentVideoTimeMs; // Update start time for continuous counting
+                                    } else {
+                                        if (isHoldingPlank) {
+                                            isHoldingPlank = false;
+                                            giveFeedback("🔴 Form broken or not detected.");
+                                        }
+                                        plankStartTime = 0; // Reset start time
+                                    }
+
+                                    const currentHoldSeconds = Math.round(holdDuration / 1000);
+                                    document.getElementById('result').textContent = `⏱️ Time in good form: ${currentHoldSeconds} seconds`;
+
+
+                                } else {
+                                    // No pose detected in the current frame
+                                    if (isHoldingPlank) {
+                                        isHoldingPlank = false;
+                                        plankStartTime = 0;
+                                        giveFeedback("🔴 Pose lost, form broken.");
+                                    }
+                                    giveFormFeedback("No pose detected. Adjust camera or body position.", "warning-form");
+                                }
+                            } catch (error) {
+                                console.error("Error processing frame:", error);
+                                // This can happen if landmarks are not found for a frame, handle gracefully
+                                if (isHoldingPlank) {
+                                    isHoldingPlank = false;
+                                    plankStartTime = 0;
+                                    giveFeedback("🔴 Error detecting pose, form broken.");
+                                }
+                                giveFormFeedback("Processing error. Try adjusting lighting or video quality.", "error");
+                            }
+                        }
+
+                        frame++;
+
+                        if (!video.ended && video.currentTime < video.duration) {
+                            animationFrameId = requestAnimationFrame(processFrame);
+                        } else {
+                            processFrame();
+                        }
+
+                    } catch (error) {
+                        console.error("Error in processFrame:", error);
+                        document.getElementById('feedback').textContent = "Error during processing";
+                        document.getElementById('feedback').className = "error";
+                        cleanup();
+                        reject(error);
+                    }
+                }
+
+                try {
+                    await video.play();
+                    processFrame();
+                } catch (error) {
+                    console.error("Error starting video playback:", error);
+                    document.getElementById('feedback').textContent = "Error starting video playback";
+                    document.getElementById('feedback').className = "error";
+                    cleanup();
+                    reject(error);
+                }
+            });
+        }
+
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            if (processing) {
+                console.log("Already processing a video. Please wait.");
+                document.getElementById('feedback').textContent = "Already processing a video. Please wait.";
+                return;
+            }
+
+            cleanup();
+
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('result').textContent = "";
+            document.getElementById('feedback').textContent = "Loading side plank video...";
+            document.getElementById('formFeedback').textContent = "";
+
+            const url = URL.createObjectURL(file);
+            const video = document.getElementById('video');
+            video.src = url;
+
+            video.onloadeddata = async () => {
+                try {
+                    processing = true;
+                    console.log("Starting side plank analysis...");
+                    const results = await analyzeVideo(video);
+                    console.log("Side plank analysis completed with results:", results);
+                } catch (error) {
+                    console.error("Side plank analysis failed:", error);
+                    document.getElementById('feedback').textContent = "Side plank analysis failed: " + error.message;
+                    document.getElementById('feedback').className = "error";
+                } finally {
+                    processing = false;
+                    URL.revokeObjectURL(url);
+                }
+            };
+
+            video.onerror = (error) => {
+                console.error("Video loading error:", error);
+                document.getElementById('feedback').textContent = "Error loading video file";
+                document.getElementById('feedback').className = "error";
+                processing = false;
+                URL.revokeObjectURL(url);
+            };
+        });
+
+        setupPoseLandmarker();
+    </script>
+</body>
+</html>

@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Jump Squat Rep Counter with Form Correction (Video Upload, WASM)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #video {
+            max-width: 100%;
+            margin-bottom: 1em;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+        #feedback {
+            font-size: 1.2em;
+            margin-top: 1em;
+            color: #007bff;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        #result {
+            font-size: 1.4em;
+            margin-top: 1em;
+            font-weight: bold;
+            color: #28a745;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #d4edda;
+        }
+        #formFeedback {
+            font-size: 1.1em;
+            margin-top: 1em;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+        .processing { color: #ffc107; background-color: #fff3cd; }
+        .error { color: #dc3545; background-color: #f8d7da; }
+        .good-form { color: #28a745; background-color: #d4edda; }
+        .warning-form { color: #fd7e14; background-color: #fff0e6; }
+        .bad-form { color: #dc3545; background-color: #f8d7da; }
+        .upload-section {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            text-align: center;
+        }
+        input[type="file"] {
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h2>🤸‍♂️ Jump Squat Rep Counter with Form Correction</h2>
+    <div class="upload-section">
+        <input type="file" id="fileInput" accept="video/*">
+        <p>Upload a video of your jump squat workout to analyze form and count reps</p>
+    </div>
+
+    <video id="video" controls muted></video>
+    <div id="feedback"></div>
+    <div id="formFeedback"></div>
+    <div id="result"></div>
+
+    <script type="module">
+        import {
+            FilesetResolver,
+            PoseLandmarker,
+        } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
+
+        let poseLandmarker, vision, processing = false;
+        let animationFrameId = null;
+
+        async function setupPoseLandmarker() {
+            try {
+                vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+                );
+                poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numPoses: 1,
+                    minPoseDetectionConfidence: 0.5,
+                    minPosePresenceConfidence: 0.5,
+                    minTrackingConfidence: 0.5,
+                    outputSegmentationMasks: false,
+                });
+                console.log("PoseLandmarker initialized successfully");
+                document.getElementById('feedback').textContent = "Pose detection ready. Upload a video to analyze your jump squat form.";
+            } catch (error) {
+                console.error("Failed to initialize PoseLandmarker:", error);
+                document.getElementById('feedback').textContent = "Failed to load pose detection model. Please try refreshing the page.";
+                document.getElementById('feedback').className = "error";
+            }
+        }
+
+        function calcAngle(a, b, c) {
+            const ab = Math.hypot(b.x - a.x, b.y - a.y);
+            const bc = Math.hypot(c.x - b.x, c.y - b.y);
+            const ac = Math.hypot(c.x - a.x, c.y - a.y);
+            return Math.acos((ab**2 + bc**2 - ac**2) / (2 * ab * bc)) * (180 / Math.PI);
+        }
+
+        function analyzeJumpSquatForm(landmarks) {
+            const lm = landmarks[0];
+            const leftHip = lm[23], rightHip = lm[24];
+            const leftKnee = lm[25], rightKnee = lm[26];
+            const leftAnkle = lm[27], rightAnkle = lm[28];
+            const leftShoulder = lm[11], rightShoulder = lm[12];
+
+            // Calculate knee angles
+            const leftKneeAngle = calcAngle(leftHip, leftKnee, leftAnkle);
+            const rightKneeAngle = calcAngle(rightHip, rightKnee, rightAnkle);
+            const avgKneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
+
+            // Calculate hip angles (hip-knee-ankle for depth analysis)
+            const leftHipAngle = calcAngle(leftShoulder, leftHip, leftKnee);
+            const rightHipAngle = calcAngle(rightShoulder, rightHip, rightKnee);
+            const avgHipAngle = (leftHipAngle + rightHipAngle) / 2;
+
+            // Check knee alignment (knees should not cave inward)
+            const kneeDistance = Math.abs(leftKnee.x - rightKnee.x);
+            const hipDistance = Math.abs(leftHip.x - rightHip.x);
+            const kneeAlignment = hipDistance > 0 ? kneeDistance / hipDistance : 1; // Avoid division by zero
+
+            // Calculate vertical position of hips for jump detection
+            const midHipY = (leftHip.y + rightHip.y) / 2;
+
+            // Torso angle (less critical for jump squat but still good to monitor)
+            const midHip = { x: (leftHip.x + rightHip.x) / 2, y: (leftHip.y + rightHip.y) / 2 };
+            const midShoulder = { x: (leftShoulder.x + rightShoulder.x) / 2, y: (leftShoulder.y + rightShoulder.y) / 2 };
+            const torsoAngle = Math.atan2(midShoulder.x - midHip.x, midHip.y - midShoulder.y) * (180 / Math.PI);
+
+            return {
+                kneeAngle: avgKneeAngle,
+                hipAngle: avgHipAngle,
+                kneeAlignment: kneeAlignment,
+                torsoAngle: Math.abs(torsoAngle),
+                leftKneeAngle: leftKneeAngle,
+                rightKneeAngle: rightKneeAngle,
+                midHipY: midHipY
+            };
+        }
+
+        function getFormFeedback(formData, isInSquatPosition, isJumping) {
+            const feedbacks = [];
+            let overallForm = "good";
+
+            if (isJumping) {
+                feedbacks.push("⬆️ Mid-air! Focus on landing softly.");
+                return { feedback: feedbacks.join(" | "), className: "good-form" }; // Form not typically assessed mid-air
+            }
+
+            if (!isInSquatPosition) {
+                 feedbacks.push("Ready for next rep. Descend into squat.");
+                 return { feedback: feedbacks.join(" | "), className: "good-form" };
+            }
+
+            // Check squat depth for jump squat (should still be decent depth)
+            if (formData.kneeAngle > 110) { // Slightly more forgiving than regular squat
+                feedbacks.push("🔻 Go deeper for a more powerful jump!");
+                overallForm = "warning";
+            } else if (formData.kneeAngle < 70) {
+                feedbacks.push("⚠️ Too deep - risk of injury or losing power.");
+                overallForm = "bad";
+            } else {
+                feedbacks.push("✅ Good squat depth for jump.");
+            }
+
+            // Check knee alignment
+            if (formData.kneeAlignment < 0.7) {
+                feedbacks.push("⚠️ Knees caving in - push knees out.");
+                overallForm = "bad";
+            } else if (formData.kneeAlignment > 1.3) {
+                feedbacks.push("⚠️ Knees too wide - bring them in slightly.");
+                overallForm = "warning";
+            } else {
+                feedbacks.push("✅ Good knee alignment.");
+            }
+
+            // Check torso position
+            if (formData.torsoAngle > 40) { // More allowance for slight forward lean in jump squat
+                feedbacks.push("⚠️ Keep chest up - avoid excessive forward lean.");
+                overallForm = "warning";
+            } else {
+                feedbacks.push("✅ Good torso position.");
+            }
+
+            // Check for asymmetry between legs
+            const angleDifference = Math.abs(formData.leftKneeAngle - formData.rightKneeAngle);
+            if (angleDifference > 20) { // Slightly more lenient due to dynamic movement
+                feedbacks.push("⚠️ Uneven squat - balance both legs.");
+                overallForm = "warning";
+            }
+
+            const className = overallForm === "good" ? "good-form" :
+                               overallForm === "warning" ? "warning-form" : "bad-form";
+
+            return {
+                feedback: feedbacks.join(" | "),
+                className: className
+            };
+        }
+
+        function cleanup() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            processing = false;
+        }
+
+        async function analyzeVideo(video) {
+            return new Promise(async (resolve, reject) => {
+                document.getElementById('feedback').textContent = "Processing jump squat video...";
+                document.getElementById('feedback').className = "processing";
+                document.getElementById('result').textContent = "";
+                document.getElementById('formFeedback').textContent = "";
+
+                console.log("Processing jump squat video...");
+                let reps = 0;
+                let state = 'standing'; // 'standing', 'descending', 'squatting', 'jumping', 'landing'
+                let lastHipY = null;
+
+                // Thresholds for jump squat detection
+                const SQUAT_THRESHOLD = 95; // Knee angle at bottom of squat
+                const ASCEND_THRESHOLD = 130; // Knee angle when ascending from squat (before jump)
+                const JUMP_DETECT_THRESHOLD_Y = 0.015; // Significant upward movement in Y (normalized)
+                const LANDING_DETECT_THRESHOLD_Y = 0.005; // Significant downward movement in Y (normalized)
+                const STANDING_THRESHOLD = 160; // Knee angle when fully standing
+
+                let lastFeedback = "";
+                let lastFormFeedback = "";
+
+                if (!poseLandmarker) {
+                    await setupPoseLandmarker();
+                    if (!poseLandmarker) {
+                        const errorMsg = "Error: Could not initialize pose detection.";
+                        document.getElementById('feedback').textContent = errorMsg;
+                        document.getElementById('feedback').className = "error";
+                        console.error(errorMsg);
+                        reject(new Error(errorMsg));
+                        return;
+                    }
+                }
+
+                // Reset video to start
+                video.currentTime = 0;
+                video.muted = true;
+
+                // Wait for video to be ready
+                await new Promise((res) => {
+                    const onCanPlay = () => {
+                        video.removeEventListener('canplay', onCanPlay);
+                        res();
+                    };
+                    video.addEventListener('canplay', onCanPlay);
+                    if (video.readyState >= 3) {
+                        res();
+                    }
+                });
+
+                const FRAME_SKIP = 2; // Process more frames for faster dynamic movements
+                let frame = 0;
+                let lastProcessedTime = -1;
+
+                function giveFeedback(msg) {
+                    if (msg !== lastFeedback) {
+                        document.getElementById('feedback').textContent = msg;
+                        document.getElementById('feedback').className = "processing";
+                        console.log("Feedback:", msg);
+                        lastFeedback = msg;
+                    }
+                }
+
+                function giveFormFeedback(feedback, className) {
+                    if (feedback !== lastFormFeedback) {
+                        document.getElementById('formFeedback').textContent = feedback;
+                        document.getElementById('formFeedback').className = className;
+                        lastFormFeedback = feedback;
+                    }
+                }
+
+                function processFrame() {
+                    try {
+                        // Check if video has ended
+                        if (video.ended || video.currentTime >= video.duration) {
+                            const resultText = `🏁 Analysis Complete!\n💪 Jump Squats: ${reps}`;
+                            document.getElementById('result').textContent = resultText;
+                            document.getElementById('feedback').textContent = "Jump squat analysis complete!";
+                            document.getElementById('feedback').className = "";
+                            document.getElementById('formFeedback').textContent = "";
+                            console.log("Analysis complete.");
+                            console.log("Final Results:", resultText);
+
+                            video.pause();
+                            cleanup();
+                            resolve({ reps });
+                            return;
+                        }
+
+                        // Process every nth frame
+                        if (frame % FRAME_SKIP === 0 && video.currentTime !== lastProcessedTime) {
+                            lastProcessedTime = video.currentTime;
+
+                            try {
+                                const results = poseLandmarker.detectForVideo(video, performance.now());
+                                if (results.landmarks && results.landmarks.length > 0) {
+                                    const formData = analyzeJumpSquatForm(results.landmarks);
+                                    const avgKneeAngle = formData.kneeAngle;
+                                    const currentHipY = formData.midHipY; // Normalized Y coordinate (0-1)
+
+                                    // Dynamic state machine for jump squat detection
+                                    switch (state) {
+                                        case 'standing':
+                                            if (avgKneeAngle < STANDING_THRESHOLD) { // Start descending
+                                                state = 'descending';
+                                                giveFeedback("⬇️ Descending into squat...");
+                                            }
+                                            break;
+                                        case 'descending':
+                                            if (avgKneeAngle <= SQUAT_THRESHOLD) { // Reached bottom of squat
+                                                state = 'squatting';
+                                                giveFeedback("🎯 At squat depth. Prepare to jump!");
+                                            } else if (avgKneeAngle > STANDING_THRESHOLD) { // Stood up before reaching depth
+                                                state = 'standing';
+                                                giveFeedback("📈 Back to standing. Start your squat.");
+                                            }
+                                            break;
+                                        case 'squatting':
+                                            // Detect upward movement for the jump phase
+                                            if (currentHipY !== null && lastHipY !== null) {
+                                                const deltaY = lastHipY - currentHipY; // Y-axis goes down, so up movement is negative deltaY
+                                                if (deltaY > JUMP_DETECT_THRESHOLD_Y && avgKneeAngle > ASCEND_THRESHOLD) {
+                                                    state = 'jumping';
+                                                    giveFeedback("🚀 Jumping!");
+                                                    reps++;
+                                                }
+                                            }
+                                            break;
+                                        case 'jumping':
+                                            // Detect landing - hip Y starts increasing (moving down)
+                                            if (currentHipY !== null && lastHipY !== null) {
+                                                const deltaY = currentHipY - lastHipY;
+                                                if (deltaY > LANDING_DETECT_THRESHOLD_Y) { // Significant downward movement
+                                                    state = 'landing';
+                                                    giveFeedback("🛬 Landing...");
+                                                }
+                                            }
+                                            break;
+                                        case 'landing':
+                                            if (avgKneeAngle > STANDING_THRESHOLD - 5 && avgKneeAngle < STANDING_THRESHOLD + 5) { // Back to standing or near standing
+                                                state = 'standing';
+                                                giveFeedback(`✅ Jump Squat Completed! Reps: ${reps}. Ready for next.`);
+                                            } else if (avgKneeAngle < SQUAT_THRESHOLD) { // If they immediately go into another squat
+                                                state = 'descending';
+                                                giveFeedback(`✅ Jump Squat Completed! Reps: ${reps}. Descending for next.`);
+                                            }
+                                            break;
+                                    }
+
+                                    lastHipY = currentHipY;
+
+                                    // Form feedback (primarily for the squat/landing phase)
+                                    const formFeedback = getFormFeedback(formData, state === 'descending' || state === 'squatting', state === 'jumping');
+                                    giveFormFeedback(formFeedback.feedback, formFeedback.className);
+
+                                }
+                            } catch (error) {
+                                console.error("Error processing frame:", error);
+                            }
+                        }
+
+                        frame++;
+
+                        // Continue processing
+                        if (!video.ended && video.currentTime < video.duration) {
+                            animationFrameId = requestAnimationFrame(processFrame);
+                        } else {
+                            processFrame();
+                        }
+
+                    } catch (error) {
+                        console.error("Error in processFrame:", error);
+                        document.getElementById('feedback').textContent = "Error during processing";
+                        document.getElementById('feedback').className = "error";
+                        cleanup();
+                        reject(error);
+                    }
+                }
+
+                // Start processing
+                try {
+                    await video.play();
+                    processFrame();
+                } catch (error) {
+                    console.error("Error starting video playback:", error);
+                    document.getElementById('feedback').textContent = "Error starting video playback";
+                    document.getElementById('feedback').className = "error";
+                    cleanup();
+                    reject(error);
+                }
+            });
+        }
+
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            if (processing) {
+                console.log("Already processing a video. Please wait.");
+                document.getElementById('feedback').textContent = "Already processing a video. Please wait.";
+                return;
+            }
+
+            cleanup();
+
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Clear previous results
+            document.getElementById('result').textContent = "";
+            document.getElementById('feedback').textContent = "Loading jump squat video...";
+            document.getElementById('formFeedback').textContent = "";
+
+            const url = URL.createObjectURL(file);
+            const video = document.getElementById('video');
+            video.src = url;
+
+            video.onloadeddata = async () => {
+                try {
+                    processing = true;
+                    console.log("Starting jump squat analysis...");
+                    const results = await analyzeVideo(video);
+                    console.log("Jump squat analysis completed with results:", results);
+                } catch (error) {
+                    console.error("Jump squat analysis failed:", error);
+                    document.getElementById('feedback').textContent = "Jump squat analysis failed: " + error.message;
+                    document.getElementById('feedback').className = "error";
+                } finally {
+                    processing = false;
+                    URL.revokeObjectURL(url);
+                }
+            };
+
+            video.onerror = (error) => {
+                console.error("Video loading error:", error);
+                document.getElementById('feedback').textContent = "Error loading video file";
+                document.getElementById('feedback').className = "error";
+                processing = false;
+                URL.revokeObjectURL(url);
+            };
+        });
+
+        // Initialize the pose landmarker on page load
+        setupPoseLandmarker();
+    </script>
+</body>
+</html>

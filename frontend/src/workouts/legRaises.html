@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Leg Raise Rep Counter with Form Correction (Video Upload, WASM)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #video-container {
+            position: relative;
+            max-width: 100%;
+            margin-bottom: 1em;
+        }
+        #video, #output_canvas {
+            max-width: 100%;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            display: block; /* Ensure no extra space below video */
+        }
+        #output_canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none; /* Allows clicks to pass through to video */
+        }
+        #feedback {
+            font-size: 1.2em;
+            margin-top: 1em;
+            color: #007bff;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        #result {
+            font-size: 1.4em;
+            margin-top: 1em;
+            font-weight: bold;
+            color: #28a745;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #d4edda;
+        }
+        #formFeedback {
+            font-size: 1.1em;
+            margin-top: 1em;
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: 500;
+        }
+        .processing { color: #ffc107; background-color: #fff3cd; }
+        .error { color: #dc3545; background-color: #f8d7da; }
+        .good-form { color: #28a745; background-color: #d4edda; }
+        .warning-form { color: #fd7e14; background-color: #fff0e6; }
+        .bad-form { color: #dc3545; background-color: #f8d7da; }
+        .upload-section {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            text-align: center;
+        }
+        input[type="file"] {
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h2>🤸 Leg Raise Rep Counter</h2>
+    <div class="upload-section">
+        <input type="file" id="fileInput" accept="video/*">
+        <p>Upload a video of your leg raise workout to analyze form and count reps</p>
+    </div>
+
+    <div id="video-container">
+        <video id="video" controls muted></video>
+        <canvas id="output_canvas"></canvas>
+    </div>
+
+    <div id="feedback"></div>
+    <div id="formFeedback"></div>
+    <div id="result"></div>
+
+    <script type="module">
+        import {
+            FilesetResolver,
+            PoseLandmarker,
+            DrawingUtils
+        } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
+
+        let poseLandmarker, vision, processing = false;
+        let animationFrameId = null;
+        let drawingUtils;
+        let canvasCtx;
+
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('output_canvas');
+        canvasCtx = canvas.getContext('2d');
+
+        async function setupPoseLandmarker() {
+            try {
+                vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+                );
+                poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numPoses: 1,
+                    minPoseDetectionConfidence: 0.5,
+                    minPosePresenceConfidence: 0.5,
+                    minTrackingConfidence: 0.5,
+                    outputSegmentationMasks: false,
+                });
+                drawingUtils = new DrawingUtils(canvasCtx);
+                console.log("PoseLandmarker initialized successfully");
+                document.getElementById('feedback').textContent = "Pose detection ready. Upload a video to analyze your leg raises.";
+            } catch (error) {
+                console.error("Failed to initialize PoseLandmarker:", error);
+                document.getElementById('feedback').textContent = "Failed to load pose detection model. Please try refreshing the page.";
+                document.getElementById('feedback').className = "error";
+            }
+        }
+
+        // Helper function to calculate angle between three points
+        function calcAngle(a, b, c) {
+            const ab = Math.hypot(b.x - a.x, b.y - a.y);
+            const bc = Math.hypot(c.x - b.x, c.y - b.y);
+            const ac = Math.hypot(c.x - a.x, c.y - a.y);
+            return Math.acos((ab**2 + bc**2 - ac**2) / (2 * ab * bc)) * (180 / Math.PI);
+        }
+
+        function analyzeLegRaiseForm(landmarks) {
+            const lm = landmarks[0]; // Assuming single pose
+            const leftHip = lm[23], rightHip = lm[24];
+            const leftKnee = lm[25], rightKnee = lm[26];
+            const leftAnkle = lm[27], rightAnkle = lm[28];
+            const leftShoulder = lm[11], rightShoulder = lm[12];
+            const leftHeel = lm[29], rightHeel = lm[30]; // Useful for ground contact
+
+            // Hip angle (shoulder-hip-ankle) for a straight leg raise
+            const leftTorsoHipAngle = calcAngle(leftShoulder, leftHip, leftAnkle); 
+            const rightTorsoHipAngle = calcAngle(rightShoulder, rightHip, rightAnkle); 
+            const avgTorsoHipAngle = (leftTorsoHipAngle + rightTorsoHipAngle) / 2;
+
+            // Knee angles (hip-knee-ankle) - to check if legs are straight or bent
+            const leftKneeAngle = calcAngle(leftHip, leftKnee, leftAnkle);
+            const rightKneeAngle = calcAngle(rightHip, rightKnee, rightAnkle);
+            const avgKneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
+
+            // Vertical position of ankles relative to hips (lower Y means higher up on screen)
+            const midHipY = (leftHip.y + rightHip.y) / 2;
+            const avgAnkleY = (leftAnkle.y + rightAnkle.y) / 2;
+            const ankleRelHipY = avgAnkleY - midHipY; // Positive if ankles are below hips (down), negative if above (up)
+
+            // Vertical position of heel relative to hip
+            const avgHeelY = (leftHeel.y + rightHeel.y) / 2;
+            const heelRelHipY = avgHeelY - midHipY;
+
+            return {
+                avgTorsoHipAngle,
+                avgKneeAngle,
+                ankleRelHipY, // Vertical position of ankles relative to hips
+                heelRelHipY, // Vertical position of heels relative to hips
+                leftKneeAngle,
+                rightKneeAngle
+            };
+        }
+
+        function getFormFeedback(formData, isLifting, isDownPosition) {
+            const feedbacks = [];
+            let overallForm = "good";
+
+            const { avgTorsoHipAngle, avgKneeAngle } = formData;
+
+            if (isDownPosition) {
+                feedbacks.push("✅ Legs down. Ready for next rep!");
+                if (avgKneeAngle < 170) { // Check if knees are fully extended when down (e.g. 170-180)
+                    feedbacks.push("⚠️ Fully straighten your legs.");
+                    overallForm = "warning";
+                }
+            } else if (isLifting) {
+                feedbacks.push("⬆️ Legs lifting up!");
+
+                // Check for bent knees during raise
+                if (avgKneeAngle < 160) { // If knees are significantly bent during the raise (e.g. <160)
+                    feedbacks.push("⚠️ Keep your legs straight for better core engagement.");
+                    overallForm = "warning";
+                }
+
+                // Check for adequate hip flexion (how high legs are raised)
+                // A smaller angle means legs are higher (closer to torso)
+                if (avgTorsoHipAngle > 100) { // Example: If angle is too wide, not lifting high enough
+                    feedbacks.push("🔻 Lift your legs higher for full range of motion.");
+                    overallForm = "warning";
+                } else if (avgTorsoHipAngle < 60) { // Example: Lifting very high, might cause back arch
+                     feedbacks.push("✅ Good height!");
+                }
+            } else {
+                feedbacks.push("Lowering legs...");
+            }
+
+            // General form advice regardless of up/down state
+            if (Math.abs(formData.leftKneeAngle - formData.rightKneeAngle) > 15) { // Increased tolerance slightly
+                feedbacks.push("⚠️ Keep both legs moving together.");
+                overallForm = "warning";
+            }
+
+            const className = overallForm === "good" ? "good-form" :
+                               overallForm === "warning" ? "warning-form" : "bad-form";
+
+            return {
+                feedback: feedbacks.join(" | "),
+                className: className
+            };
+        }
+
+        function cleanup() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            processing = false;
+        }
+
+        async function analyzeVideo(video) {
+            return new Promise(async (resolve, reject) => {
+                document.getElementById('feedback').textContent = "Processing leg raise video...";
+                document.getElementById('feedback').className = "processing";
+                document.getElementById('result').textContent = "";
+                document.getElementById('formFeedback').textContent = "";
+
+                console.log("Processing leg raise video...");
+                let reps = 0;
+                let isUp = false; // State: Are both legs lifted upwards?
+
+                // Define fixed threshold for the "up" position
+                const HIP_ANGLE_UPPER_BOUND = 100; // Max hip angle when legs are considered "up" (e.g., 90-100 degrees)
+                
+                // Calibration variables for the "down" position
+                let calibratedMaxHipAngle = -1; // Max (widest) hip angle observed during calibration
+                let calibratedLowestAnkleY = -1; // Lowest Y for ankles (most "down" on screen)
+                let calibratedLowestHeelY = -1; // Lowest Y for heels
+
+                let frameCountAtStart = 0;
+                const INITIAL_FRAMES_FOR_CALIBRATION = 60; // Calibrate for first 60 frames (2 seconds at 30fps)
+                
+                // Allowable variance from calibrated lowest point for "down" detection
+                const ANKLE_GROUND_OFFSET_TOLERANCE = 0.02; // Normalized offset (e.g., within 2% of video height)
+                const HEEL_GROUND_OFFSET_TOLERANCE = 0.01; // Normalized offset
+
+                // Allowable variance from calibrated max hip angle for "down" detection
+                const HIP_ANGLE_DOWN_TOLERANCE = 10; // Degrees (e.g., within 10 degrees of calibrated max)
+
+                let lastFeedback = "";
+                let lastFormFeedback = "";
+
+                if (!poseLandmarker) {
+                    await setupPoseLandmarker();
+                    if (!poseLandmarker) {
+                        const errorMsg = "Error: Could not initialize pose detection.";
+                        document.getElementById('feedback').textContent = errorMsg;
+                        document.getElementById('feedback').className = "error";
+                        console.error(errorMsg);
+                        reject(new Error(errorMsg));
+                        return;
+                    }
+                }
+
+                // Reset video to start
+                video.currentTime = 0;
+                video.muted = true;
+
+                // Wait for video to be ready and set canvas dimensions
+                await new Promise((res) => {
+                    const onCanPlay = () => {
+                        video.removeEventListener('canplay', onCanPlay);
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        res();
+                    };
+                    video.addEventListener('canplay', onCanPlay);
+                    if (video.readyState >= 3) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        res();
+                    }
+                });
+
+                const FRAME_SKIP = 2; // Process every 2nd frame for smoother performance
+                let frame = 0;
+                let lastProcessedTime = -1;
+
+                function giveFeedback(msg) {
+                    if (msg !== lastFeedback) {
+                        document.getElementById('feedback').textContent = msg;
+                        document.getElementById('feedback').className = "processing";
+                        console.log("Feedback:", msg);
+                        lastFeedback = msg;
+                    }
+                }
+
+                function giveFormFeedback(feedback, className) {
+                    if (feedback !== lastFormFeedback) {
+                        document.getElementById('formFeedback').textContent = feedback;
+                        document.getElementById('formFeedback').className = className;
+                        lastFormFeedback = feedback;
+                    }
+                }
+
+                function processFrame() {
+                    try {
+                        // Check if video has ended
+                        if (video.ended || video.currentTime >= video.duration) {
+                            const resultText = `🏁 Analysis Complete!\n💪 Total Leg Raises: ${reps}`;
+                            document.getElementById('result').textContent = resultText;
+                            document.getElementById('feedback').textContent = "Leg raise analysis complete!";
+                            document.getElementById('feedback').className = "";
+                            document.getElementById('formFeedback').textContent = "";
+                            console.log("Analysis complete.");
+                            console.log("Final Results:", resultText);
+
+                            video.pause();
+                            cleanup();
+                            resolve({ reps });
+                            return;
+                        }
+
+                        // Process every nth frame
+                        if (frame % FRAME_SKIP === 0 && video.currentTime !== lastProcessedTime) {
+                            lastProcessedTime = video.currentTime;
+
+                            try {
+                                const results = poseLandmarker.detectForVideo(video, performance.now());
+                                canvasCtx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous drawings
+
+                                if (results.landmarks && results.landmarks.length > 0) {
+                                    drawingUtils.drawConnectors(
+                                        results.landmarks[0],
+                                        PoseLandmarker.POSE_CONNECTIONS,
+                                        { color: '#00FF00', lineWidth: 4 }
+                                    );
+                                    drawingUtils.drawLandmarks(results.landmarks[0], {
+                                        radius: (landmarker) => DrawingUtils.lerp(landmarker.score, 0.1, 0.5, 8)
+                                    });
+
+                                    const formData = analyzeLegRaiseForm(results.landmarks);
+
+                                    // --- Dynamic Calibration for "Down" Position ---
+                                    if (frameCountAtStart < INITIAL_FRAMES_FOR_CALIBRATION) {
+                                        // Capture the maximum hip angle (widest) and lowest Y position for ankles and heels
+                                        // This assumes the person is starting in the "legs down" position.
+                                        if (calibratedMaxHipAngle === -1 || formData.avgTorsoHipAngle > calibratedMaxHipAngle) {
+                                            calibratedMaxHipAngle = formData.avgTorsoHipAngle;
+                                        }
+                                        if (calibratedLowestAnkleY === -1 || formData.ankleRelHipY > calibratedLowestAnkleY) { // ankleRelHipY is positive when below hips
+                                            calibratedLowestAnkleY = formData.ankleRelHipY;
+                                        }
+                                        if (calibratedLowestHeelY === -1 || formData.heelRelHipY > calibratedLowestHeelY) {
+                                            calibratedLowestHeelY = formData.heelRelHipY;
+                                        }
+                                        frameCountAtStart++;
+                                        giveFeedback("Calibrating initial 'legs down' position...");
+                                        giveFormFeedback("Lie flat with legs extended at the start of the video for best results.", "processing");
+                                    } else {
+                                        // --- Leg Raise Detection Logic ---
+
+                                        // "Up" state: Legs are lifted (hip angle is acute/smaller), and knees are relatively straight
+                                        const currentlyUp = formData.avgTorsoHipAngle < HIP_ANGLE_UPPER_BOUND && 
+                                                          formData.avgKneeAngle > 160; 
+
+                                        // "Down" state: Legs are extended, close to their calibrated lowest point, and knees are very straight.
+                                        const currentlyDown = formData.avgTorsoHipAngle >= (calibratedMaxHipAngle - HIP_ANGLE_DOWN_TOLERANCE) && // Hip angle close to calibrated max
+                                                              formData.avgKneeAngle > 170 && // Legs are very straight
+                                                              formData.ankleRelHipY >= (calibratedLowestAnkleY - ANKLE_GROUND_OFFSET_TOLERANCE) && 
+                                                              formData.heelRelHipY >= (calibratedLowestHeelY - HEEL_GROUND_OFFSET_TOLERANCE); 
+
+                                        // State machine for rep counting:
+                                        if (!isUp && currentlyUp) {
+                                            // Transition from 'down' or 'mid' to 'up'
+                                            isUp = true;
+                                            giveFeedback("⬆️ Legs are up!");
+                                        } else if (isUp && currentlyDown) {
+                                            // Transition from 'up' to 'down' - this completes a full rep
+                                            isUp = false; // Reset state for the next rep
+                                            reps++;       // Increment rep count
+                                            giveFeedback(`⬇️ Rep completed: ${reps}`);
+                                        } else if (!isUp && !currentlyDown) {
+                                            // If not yet in "up" state, and not fully "down" (e.g., mid-way up or down)
+                                            giveFeedback("🧘‍♂️ Preparing for next rep or lowering legs...");
+                                        }
+
+                                        // Form feedback
+                                        const formFeedback = getFormFeedback(formData, currentlyUp, currentlyDown);
+                                        giveFormFeedback(formFeedback.feedback, formFeedback.className);
+                                    }
+                                } else {
+                                    giveFeedback("🧍‍♂️ No pose detected. Ensure you are fully visible and lying on your back.");
+                                    giveFormFeedback("Adjust position for better detection.", "warning-form");
+                                }
+                            } catch (error) {
+                                console.error("Error processing frame:", error);
+                            }
+                        }
+
+                        frame++;
+
+                        // Continue processing
+                        if (!video.ended && video.currentTime < video.duration) {
+                            animationFrameId = requestAnimationFrame(processFrame);
+                        } else {
+                            // Ensure final state is processed if video ended mid-frame-skip
+                            processFrame();
+                        }
+
+                    } catch (error) {
+                        console.error("Error in processFrame:", error);
+                        document.getElementById('feedback').textContent = "Error during processing";
+                        document.getElementById('feedback').className = "error";
+                        cleanup();
+                        reject(error);
+                    }
+                }
+
+                // Start processing
+                try {
+                    await video.play();
+                    processFrame();
+                } catch (error) {
+                    console.error("Error starting video playback:", error);
+                    document.getElementById('feedback').textContent = "Error starting video playback";
+                    document.getElementById('feedback').className = "error";
+                    cleanup();
+                    reject(error);
+                }
+            });
+        }
+
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            if (processing) {
+                console.log("Already processing a video. Please wait.");
+                document.getElementById('feedback').textContent = "Already processing a video. Please wait.";
+                return;
+            }
+
+            cleanup();
+
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Clear previous results
+            document.getElementById('result').textContent = "";
+            document.getElementById('feedback').textContent = "Loading leg raise video...";
+            document.getElementById('formFeedback').textContent = "";
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+
+            const url = URL.createObjectURL(file);
+            video.src = url;
+
+            video.onloadeddata = async () => {
+                try {
+                    processing = true;
+                    console.log("Starting leg raise analysis...");
+                    const results = await analyzeVideo(video);
+                    console.log("Leg raise analysis completed with results:", results);
+                } catch (error) {
+                    console.error("Leg raise analysis failed:", error);
+                    document.getElementById('feedback').textContent = "Leg raise analysis failed: " + error.message;
+                    document.getElementById('feedback').className = "error";
+                } finally {
+                    processing = false;
+                    URL.revokeObjectURL(url);
+                }
+            };
+
+            video.onerror = (error) => {
+                console.error("Video loading error:", error);
+                document.getElementById('feedback').textContent = "Error loading video file";
+                document.getElementById('feedback').className = "error";
+                processing = false;
+                URL.revokeObjectURL(url);
+            };
+        });
+
+        // Initialize the pose landmarker on page load
+        setupPoseLandmarker();
+    </script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Push-Up Rep Counter (Video Upload, WASM)</title>
+  <style>
+    #video { max-width: 100%; margin-bottom: 1em; }
+    #feedback { font-size: 1.2em; margin-top: 1em; color: #007bff; }
+    #result { font-size: 1.4em; margin-top: 1em; font-weight: bold; color: #28a745; }
+    .processing { color: #ffc107; }
+    .error { color: #dc3545; }
+  </style>
+</head>
+<body>
+  <h2>Push-Up Rep Counter (Upload Video)</h2>
+  <input type="file" id="fileInput" accept="video/*">
+  <video id="video" controls muted></video>
+  <div id="feedback"></div>
+  <div id="result"></div>
+
+  <script type="module">
+    import {
+      FilesetResolver,
+      PoseLandmarker,
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
+
+    let poseLandmarker, vision, processing = false;
+    let animationFrameId = null;
+
+    async function setupPoseLandmarker() {
+      try {
+        vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+        );
+        poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          numPoses: 1,
+          minPoseDetectionConfidence: 0.5,
+          minPosePresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+          outputSegmentationMasks: false,
+        });
+        console.log("PoseLandmarker initialized successfully");
+        document.getElementById('feedback').textContent = "Pose detection ready. Upload a video to analyze.";
+      } catch (error) {
+        console.error("Failed to initialize PoseLandmarker:", error);
+        document.getElementById('feedback').textContent = "Failed to load pose detection model. Please try refreshing the page.";
+        document.getElementById('feedback').className = "error";
+      }
+    }
+
+    function calcAngle(a, b, c) {
+      const ab = Math.hypot(b.x - a.x, b.y - a.y);
+      const bc = Math.hypot(c.x - b.x, c.y - b.y);
+      const ac = Math.hypot(c.x - a.x, c.y - a.y);
+      return Math.acos((ab**2 + bc**2 - ac**2) / (2 * ab * bc)) * (180 / Math.PI);
+    }
+
+    function cleanup() {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      processing = false;
+    }
+
+    async function analyzeVideo(video) {
+      return new Promise(async (resolve, reject) => {
+        document.getElementById('feedback').textContent = "Processing video...";
+        document.getElementById('feedback').className = "processing";
+        document.getElementById('result').textContent = "";
+        
+        console.log("Processing video...");
+        let reps = 0, partialReps = 0, isDown = false;
+        const ELBOW_BEND_THRESHOLD = 120;
+        const PARTIAL_BEND_THRESHOLD = 145;
+        let lastFeedback = "";
+
+        if (!poseLandmarker) {
+          await setupPoseLandmarker();
+          if (!poseLandmarker) {
+            const errorMsg = "Error: Could not initialize pose detection.";
+            document.getElementById('feedback').textContent = errorMsg;
+            document.getElementById('feedback').className = "error";
+            console.error(errorMsg);
+            reject(new Error(errorMsg));
+            return;
+          }
+        }
+
+        // Reset video to start
+        video.currentTime = 0;
+        video.muted = true; // Ensure video is muted to avoid autoplay issues
+        
+        // Wait for video to be ready
+        await new Promise((res) => {
+          const onCanPlay = () => {
+            video.removeEventListener('canplay', onCanPlay);
+            res();
+          };
+          video.addEventListener('canplay', onCanPlay);
+          if (video.readyState >= 3) { // HAVE_FUTURE_DATA
+            res();
+          }
+        });
+
+        const FRAME_SKIP = 2;
+        let frame = 0;
+        let lastProcessedTime = -1;
+
+        function giveFeedback(msg) {
+          if (msg !== lastFeedback) {
+            document.getElementById('feedback').textContent = msg;
+            document.getElementById('feedback').className = "processing";
+            console.log("Feedback:", msg);
+            lastFeedback = msg;
+          }
+        }
+
+        function processFrame() {
+          try {
+            // Check if video has ended or if we should stop
+            if (video.ended || video.currentTime >= video.duration) {
+              const resultText = `Analysis Complete - Full reps: ${reps}, Partial reps: ${partialReps}`;
+              document.getElementById('result').textContent = resultText;
+              document.getElementById('feedback').textContent = "Analysis complete.";
+              document.getElementById('feedback').className = "";
+              console.log("Analysis complete.");
+              console.log("Final Results:", resultText);
+              
+              // Pause the video
+              video.pause();
+              
+              cleanup();
+              resolve({ reps, partialReps });
+              return;
+            }
+
+            // Only process every nth frame and avoid processing the same timestamp twice
+            if (frame % FRAME_SKIP === 0 && video.currentTime !== lastProcessedTime) {
+              lastProcessedTime = video.currentTime;
+              
+              try {
+                const results = poseLandmarker.detectForVideo(video, performance.now());
+                if (results.landmarks && results.landmarks.length > 0) {
+                  const lm = results.landmarks[0];
+                  const leftShoulder = lm[11], rightShoulder = lm[12];
+                  const leftElbow = lm[13], rightElbow = lm[14];
+                  const leftWrist = lm[15], rightWrist = lm[16];
+
+                  const leftAngle = calcAngle(leftShoulder, leftElbow, leftWrist);
+                  const rightAngle = calcAngle(rightShoulder, rightElbow, rightWrist);
+                  const avgElbowAngle = (leftAngle + rightAngle) / 2;
+
+                  // Push-up detection logic
+                  if (!isDown && avgElbowAngle < ELBOW_BEND_THRESHOLD) {
+                    isDown = true;
+                    giveFeedback("Down position detected");
+                  } else if (!isDown && avgElbowAngle < PARTIAL_BEND_THRESHOLD && avgElbowAngle >= ELBOW_BEND_THRESHOLD) {
+                    isDown = true;
+                    giveFeedback("Partial down detected");
+                  } else if (isDown && avgElbowAngle > 160) {
+                    isDown = false;
+                    if (avgElbowAngle >= 160) {
+                      reps++;
+                      giveFeedback(`Full rep completed: ${reps}`);
+                    } else {
+                      partialReps++;
+                      giveFeedback(`Partial rep completed: ${partialReps}`);
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error("Error processing frame:", error);
+              }
+            }
+            
+            frame++;
+            
+            // Continue processing if video is still playing
+            if (!video.ended && video.currentTime < video.duration) {
+              animationFrameId = requestAnimationFrame(processFrame);
+            } else {
+              // Video ended, trigger completion
+              processFrame();
+            }
+            
+          } catch (error) {
+            console.error("Error in processFrame:", error);
+            document.getElementById('feedback').textContent = "Error during processing";
+            document.getElementById('feedback').className = "error";
+            cleanup();
+            reject(error);
+          }
+        }
+
+        // Start processing
+        try {
+          await video.play();
+          processFrame();
+        } catch (error) {
+          console.error("Error starting video playback:", error);
+          document.getElementById('feedback').textContent = "Error starting video playback";
+          document.getElementById('feedback').className = "error";
+          cleanup();
+          reject(error);
+        }
+      });
+    }
+
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      if (processing) {
+        console.log("Already processing a video. Please wait.");
+        document.getElementById('feedback').textContent = "Already processing a video. Please wait.";
+        return;
+      }
+      
+      cleanup(); // Clean up any previous processing
+      
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      // Clear previous results
+      document.getElementById('result').textContent = "";
+      document.getElementById('feedback').textContent = "Loading video...";
+      
+      const url = URL.createObjectURL(file);
+      const video = document.getElementById('video');
+      video.src = url;
+      
+      video.onloadeddata = async () => {
+        try {
+          processing = true;
+          console.log("Starting video analysis...");
+          const results = await analyzeVideo(video);
+          console.log("Analysis completed with results:", results);
+        } catch (error) {
+          console.error("Video analysis failed:", error);
+          document.getElementById('feedback').textContent = "Video analysis failed: " + error.message;
+          document.getElementById('feedback').className = "error";
+        } finally {
+          processing = false;
+          // Clean up the object URL
+          URL.revokeObjectURL(url);
+        }
+      };
+
+      video.onerror = (error) => {
+        console.error("Video loading error:", error);
+        document.getElementById('feedback').textContent = "Error loading video file";
+        document.getElementById('feedback').className = "error";
+        processing = false;
+        URL.revokeObjectURL(url);
+      };
+    });
+
+    // Initialize the pose landmarker on page load
+    setupPoseLandmarker();
+  </script>
+</body>
+</html>

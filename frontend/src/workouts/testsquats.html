@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Squat Rep Counter with Form Correction (Video Upload, WASM)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    #video { 
+      max-width: 100%; 
+      margin-bottom: 1em; 
+      border: 2px solid #ddd;
+      border-radius: 8px;
+    }
+    #feedback { 
+      font-size: 1.2em; 
+      margin-top: 1em; 
+      color: #007bff; 
+      padding: 10px;
+      border-radius: 5px;
+      background-color: #f8f9fa;
+    }
+    #result { 
+      font-size: 1.4em; 
+      margin-top: 1em; 
+      font-weight: bold; 
+      color: #28a745;
+      padding: 15px;
+      border-radius: 5px;
+      background-color: #d4edda;
+    }
+    #formFeedback {
+      font-size: 1.1em;
+      margin-top: 1em;
+      padding: 10px;
+      border-radius: 5px;
+      font-weight: 500;
+    }
+    .processing { color: #ffc107; background-color: #fff3cd; }
+    .error { color: #dc3545; background-color: #f8d7da; }
+    .good-form { color: #28a745; background-color: #d4edda; }
+    .warning-form { color: #fd7e14; background-color: #fff0e6; }
+    .bad-form { color: #dc3545; background-color: #f8d7da; }
+    .upload-section {
+      margin-bottom: 20px;
+      padding: 20px;
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      text-align: center;
+    }
+    input[type="file"] {
+      padding: 10px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h2>🏋️ Squat Rep Counter with Form Correction</h2>
+  <div class="upload-section">
+    <input type="file" id="fileInput" accept="video/*">
+    <p>Upload a video of your squat workout to analyze form and count reps</p>
+  </div>
+  
+  <video id="video" controls muted></video>
+  <div id="feedback"></div>
+  <div id="formFeedback"></div>
+  <div id="result"></div>
+
+  <script type="module">
+    import {
+      FilesetResolver,
+      PoseLandmarker,
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
+
+    let poseLandmarker, vision, processing = false;
+    let animationFrameId = null;
+
+    async function setupPoseLandmarker() {
+      try {
+        vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+        );
+        poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          numPoses: 1,
+          minPoseDetectionConfidence: 0.5,
+          minPosePresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+          outputSegmentationMasks: false,
+        });
+        console.log("PoseLandmarker initialized successfully");
+        document.getElementById('feedback').textContent = "Pose detection ready. Upload a video to analyze your squat form.";
+      } catch (error) {
+        console.error("Failed to initialize PoseLandmarker:", error);
+        document.getElementById('feedback').textContent = "Failed to load pose detection model. Please try refreshing the page.";
+        document.getElementById('feedback').className = "error";
+      }
+    }
+
+    function calcAngle(a, b, c) {
+      const ab = Math.hypot(b.x - a.x, b.y - a.y);
+      const bc = Math.hypot(c.x - b.x, c.y - b.y);
+      const ac = Math.hypot(c.x - a.x, c.y - a.y);
+      return Math.acos((ab**2 + bc**2 - ac**2) / (2 * ab * bc)) * (180 / Math.PI);
+    }
+
+    function analyzeSquatForm(landmarks) {
+      const lm = landmarks[0];
+      const leftHip = lm[23], rightHip = lm[24];
+      const leftKnee = lm[25], rightKnee = lm[26];
+      const leftAnkle = lm[27], rightAnkle = lm[28];
+      const leftShoulder = lm[11], rightShoulder = lm[12];
+
+      // Calculate knee angles
+      const leftKneeAngle = calcAngle(leftHip, leftKnee, leftAnkle);
+      const rightKneeAngle = calcAngle(rightHip, rightKnee, rightAnkle);
+      const avgKneeAngle = (leftKneeAngle + rightKneeAngle) / 2;
+
+      // Calculate hip angles (hip-knee-ankle for depth analysis)
+      const leftHipAngle = calcAngle(leftShoulder, leftHip, leftKnee);
+      const rightHipAngle = calcAngle(rightShoulder, rightHip, rightKnee);
+      const avgHipAngle = (leftHipAngle + rightHipAngle) / 2;
+
+      // Check knee alignment (knees should not cave inward)
+      const kneeDistance = Math.abs(leftKnee.x - rightKnee.x);
+      const hipDistance = Math.abs(leftHip.x - rightHip.x);
+      const kneeAlignment = kneeDistance / hipDistance;
+
+      // Check torso position (should stay relatively upright)
+      const midHip = { x: (leftHip.x + rightHip.x) / 2, y: (leftHip.y + rightHip.y) / 2 };
+      const midShoulder = { x: (leftShoulder.x + rightShoulder.x) / 2, y: (leftShoulder.y + rightShoulder.y) / 2 };
+      const torsoAngle = Math.atan2(midShoulder.x - midHip.x, midHip.y - midShoulder.y) * (180 / Math.PI);
+
+      return {
+        kneeAngle: avgKneeAngle,
+        hipAngle: avgHipAngle,
+        kneeAlignment: kneeAlignment,
+        torsoAngle: Math.abs(torsoAngle),
+        leftKneeAngle: leftKneeAngle,
+        rightKneeAngle: rightKneeAngle
+      };
+    }
+
+    function getFormFeedback(formData, isInSquatPosition) {
+      const feedbacks = [];
+      let overallForm = "good";
+
+      if (!isInSquatPosition) {
+        return { feedback: "Stand ready for squat", className: "good-form" };
+      }
+
+      // Check squat depth (knee angle should be around 90 degrees or less for full squat)
+      if (formData.kneeAngle > 120) {
+        feedbacks.push("🔻 Go deeper - bend your knees more");
+        overallForm = "warning";
+      } else if (formData.kneeAngle < 70) {
+        feedbacks.push("⚠️ Too deep - risk of injury");
+        overallForm = "bad";
+      } else if (formData.kneeAngle <= 90) {
+        feedbacks.push("✅ Great depth!");
+      }
+
+      // Check knee alignment
+      if (formData.kneeAlignment < 0.7) {
+        feedbacks.push("⚠️ Knees caving in - push knees out");
+        overallForm = "bad";
+      } else if (formData.kneeAlignment > 1.3) {
+        feedbacks.push("⚠️ Knees too wide - bring them in slightly");
+        overallForm = "warning";
+      } else {
+        feedbacks.push("✅ Good knee alignment");
+      }
+
+      // Check torso position
+      if (formData.torsoAngle > 30) {
+        feedbacks.push("⚠️ Keep chest up - avoid leaning forward");
+        overallForm = "warning";
+      } else {
+        feedbacks.push("✅ Good torso position");
+      }
+
+      // Check for asymmetry between legs
+      const angleDifference = Math.abs(formData.leftKneeAngle - formData.rightKneeAngle);
+      if (angleDifference > 15) {
+        feedbacks.push("⚠️ Uneven squat - balance both legs");
+        overallForm = "warning";
+      }
+
+      const className = overallForm === "good" ? "good-form" : 
+                       overallForm === "warning" ? "warning-form" : "bad-form";
+
+      return {
+        feedback: feedbacks.join(" | "),
+        className: className
+      };
+    }
+
+    function cleanup() {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      processing = false;
+    }
+
+    async function analyzeVideo(video) {
+      return new Promise(async (resolve, reject) => {
+        document.getElementById('feedback').textContent = "Processing squat video...";
+        document.getElementById('feedback').className = "processing";
+        document.getElementById('result').textContent = "";
+        document.getElementById('formFeedback').textContent = "";
+        
+        console.log("Processing squat video...");
+        let reps = 0, partialReps = 0, isDown = false;
+        const SQUAT_THRESHOLD = 100; // Knee angle for full squat
+        const PARTIAL_SQUAT_THRESHOLD = 120; // Knee angle for partial squat
+        const STANDING_THRESHOLD = 160; // Knee angle for standing position
+        let lastFeedback = "";
+        let lastFormFeedback = "";
+
+        if (!poseLandmarker) {
+          await setupPoseLandmarker();
+          if (!poseLandmarker) {
+            const errorMsg = "Error: Could not initialize pose detection.";
+            document.getElementById('feedback').textContent = errorMsg;
+            document.getElementById('feedback').className = "error";
+            console.error(errorMsg);
+            reject(new Error(errorMsg));
+            return;
+          }
+        }
+
+        // Reset video to start
+        video.currentTime = 0;
+        video.muted = true;
+        
+        // Wait for video to be ready
+        await new Promise((res) => {
+          const onCanPlay = () => {
+            video.removeEventListener('canplay', onCanPlay);
+            res();
+          };
+          video.addEventListener('canplay', onCanPlay);
+          if (video.readyState >= 3) {
+            res();
+          }
+        });
+
+        const FRAME_SKIP = 3;
+        let frame = 0;
+        let lastProcessedTime = -1;
+
+        function giveFeedback(msg) {
+          if (msg !== lastFeedback) {
+            document.getElementById('feedback').textContent = msg;
+            document.getElementById('feedback').className = "processing";
+            console.log("Feedback:", msg);
+            lastFeedback = msg;
+          }
+        }
+
+        function giveFormFeedback(feedback, className) {
+          if (feedback !== lastFormFeedback) {
+            document.getElementById('formFeedback').textContent = feedback;
+            document.getElementById('formFeedback').className = className;
+            lastFormFeedback = feedback;
+          }
+        }
+
+        function processFrame() {
+          try {
+            // Check if video has ended
+            if (video.ended || video.currentTime >= video.duration) {
+              const resultText = `🏁 Analysis Complete!\n💪 Full squats: ${reps}\n⚡ Partial squats: ${partialReps}`;
+              document.getElementById('result').textContent = resultText;
+              document.getElementById('feedback').textContent = "Squat analysis complete!";
+              document.getElementById('feedback').className = "";
+              document.getElementById('formFeedback').textContent = "";
+              console.log("Analysis complete.");
+              console.log("Final Results:", resultText);
+              
+              video.pause();
+              cleanup();
+              resolve({ reps, partialReps });
+              return;
+            }
+
+            // Process every nth frame
+            if (frame % FRAME_SKIP === 0 && video.currentTime !== lastProcessedTime) {
+              lastProcessedTime = video.currentTime;
+              
+              try {
+                const results = poseLandmarker.detectForVideo(video, performance.now());
+                if (results.landmarks && results.landmarks.length > 0) {
+                  const formData = analyzeSquatForm(results.landmarks);
+                  const avgKneeAngle = formData.kneeAngle;
+
+                  // Squat detection logic
+                  if (!isDown && avgKneeAngle < SQUAT_THRESHOLD) {
+                    isDown = true;
+                    reps++;
+                    giveFeedback(`🏋️ Full squat completed: ${reps}`);
+                  } else if (!isDown && avgKneeAngle < PARTIAL_SQUAT_THRESHOLD && avgKneeAngle >= SQUAT_THRESHOLD) {
+                    isDown = true;
+                    partialReps++;
+                    giveFeedback(`⚡ Partial squat: ${partialReps}`);
+                  } else if (isDown && avgKneeAngle > STANDING_THRESHOLD) {
+                    isDown = false;
+                    giveFeedback("📈 Standing up - ready for next rep");
+                  }
+
+                  // Form feedback
+                  const formFeedback = getFormFeedback(formData, avgKneeAngle < PARTIAL_SQUAT_THRESHOLD);
+                  giveFormFeedback(formFeedback.feedback, formFeedback.className);
+                }
+              } catch (error) {
+                console.error("Error processing frame:", error);
+              }
+            }
+            
+            frame++;
+            
+            // Continue processing
+            if (!video.ended && video.currentTime < video.duration) {
+              animationFrameId = requestAnimationFrame(processFrame);
+            } else {
+              processFrame();
+            }
+            
+          } catch (error) {
+            console.error("Error in processFrame:", error);
+            document.getElementById('feedback').textContent = "Error during processing";
+            document.getElementById('feedback').className = "error";
+            cleanup();
+            reject(error);
+          }
+        }
+
+        // Start processing
+        try {
+          await video.play();
+          processFrame();
+        } catch (error) {
+          console.error("Error starting video playback:", error);
+          document.getElementById('feedback').textContent = "Error starting video playback";
+          document.getElementById('feedback').className = "error";
+          cleanup();
+          reject(error);
+        }
+      });
+    }
+
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      if (processing) {
+        console.log("Already processing a video. Please wait.");
+        document.getElementById('feedback').textContent = "Already processing a video. Please wait.";
+        return;
+      }
+      
+      cleanup();
+      
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      // Clear previous results
+      document.getElementById('result').textContent = "";
+      document.getElementById('feedback').textContent = "Loading squat video...";
+      document.getElementById('formFeedback').textContent = "";
+      
+      const url = URL.createObjectURL(file);
+      const video = document.getElementById('video');
+      video.src = url;
+      
+      video.onloadeddata = async () => {
+        try {
+          processing = true;
+          console.log("Starting squat analysis...");
+          const results = await analyzeVideo(video);
+          console.log("Squat analysis completed with results:", results);
+        } catch (error) {
+          console.error("Squat analysis failed:", error);
+          document.getElementById('feedback').textContent = "Squat analysis failed: " + error.message;
+          document.getElementById('feedback').className = "error";
+        } finally {
+          processing = false;
+          URL.revokeObjectURL(url);
+        }
+      };
+
+      video.onerror = (error) => {
+        console.error("Video loading error:", error);
+        document.getElementById('feedback').textContent = "Error loading video file";
+        document.getElementById('feedback').className = "error";
+        processing = false;
+        URL.revokeObjectURL(url);
+      };
+    });
+
+    // Initialize the pose landmarker on page load
+    setupPoseLandmarker();
+  </script>
+</body>
+</html>

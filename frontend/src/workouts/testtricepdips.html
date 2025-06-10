@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tricep Dips Rep Counter (Video Upload, WASM)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    h2 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 2.2em;
+    }
+    #fileInput {
+      width: 100%;
+      padding: 12px;
+      border: 2px dashed #667eea;
+      border-radius: 10px;
+      background: #f8f9ff;
+      font-size: 16px;
+      margin-bottom: 20px;
+      cursor: pointer;
+    }
+    #fileInput:hover {
+      border-color: #764ba2;
+      background: #f0f2ff;
+    }
+    #video { 
+      width: 100%; 
+      max-width: 600px;
+      margin: 20px auto;
+      display: block;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    #feedback { 
+      font-size: 1.3em; 
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    #result { 
+      font-size: 1.6em; 
+      margin: 20px 0;
+      font-weight: bold;
+      text-align: center;
+      padding: 20px;
+      border-radius: 10px;
+      background: linear-gradient(45deg, #28a745, #20c997);
+      color: white;
+      box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    }
+    .processing { 
+      background: linear-gradient(45deg, #ffc107, #fd7e14);
+      color: white;
+      animation: pulse 2s infinite;
+    }
+    .error { 
+      background: linear-gradient(45deg, #dc3545, #c82333);
+      color: white;
+    }
+    .form-feedback {
+      background: linear-gradient(45deg, #17a2b8, #138496);
+      color: white;
+    }
+    .good-form {
+      background: linear-gradient(45deg, #28a745, #20c997);
+      color: white;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      margin: 20px 0;
+    }
+    .stat-box {
+      text-align: center;
+      padding: 15px;
+      background: linear-gradient(45deg, #6c757d, #495057);
+      color: white;
+      border-radius: 10px;
+      min-width: 120px;
+    }
+    .stat-number {
+      font-size: 2em;
+      font-weight: bold;
+      display: block;
+    }
+    .stat-label {
+      font-size: 0.9em;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🏋️ Tricep Dips Rep Counter</h2>
+    <input type="file" id="fileInput" accept="video/*" placeholder="Choose a video file...">
+    <video id="video" controls muted></video>
+    
+    <div class="stats">
+      <div class="stat-box">
+        <span class="stat-number" id="repCount">0</span>
+        <span class="stat-label">Full Reps</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-number" id="partialCount">0</span>
+        <span class="stat-label">Partial Reps</span>
+      </div>
+    </div>
+    
+    <div id="feedback">Ready to analyze tricep dips. Upload a video to begin.</div>
+    <div id="result"></div>
+  </div>
+
+  <script type="module">
+    import {
+      FilesetResolver,
+      PoseLandmarker,
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
+
+    let poseLandmarker, vision, processing = false;
+    let animationFrameId = null;
+
+    async function setupPoseLandmarker() {
+      try {
+        vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+        );
+        poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+            delegate: "GPU"
+          },
+          runningMode: "VIDEO",
+          numPoses: 1,
+          minPoseDetectionConfidence: 0.5,
+          minPosePresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+          outputSegmentationMasks: false,
+        });
+        console.log("PoseLandmarker initialized successfully");
+        document.getElementById('feedback').textContent = "Pose detection ready. Upload a video to analyze tricep dips.";
+      } catch (error) {
+        console.error("Failed to initialize PoseLandmarker:", error);
+        document.getElementById('feedback').textContent = "Failed to load pose detection model. Please try refreshing the page.";
+        document.getElementById('feedback').className = "error";
+      }
+    }
+
+    function calcAngle(a, b, c) {
+      const ab = Math.hypot(b.x - a.x, b.y - a.y);
+      const bc = Math.hypot(c.x - b.x, c.y - b.y);
+      const ac = Math.hypot(c.x - a.x, c.y - a.y);
+      return Math.acos((ab**2 + bc**2 - ac**2) / (2 * ab * bc)) * (180 / Math.PI);
+    }
+
+    function calcDistance(a, b) {
+      return Math.hypot(b.x - a.x, b.y - a.y);
+    }
+
+    function cleanup() {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      processing = false;
+    }
+
+    function updateStats(reps, partialReps) {
+      document.getElementById('repCount').textContent = reps;
+      document.getElementById('partialCount').textContent = partialReps;
+    }
+
+    async function analyzeVideo(video) {
+      return new Promise(async (resolve, reject) => {
+        document.getElementById('feedback').textContent = "Processing tricep dips video...";
+        document.getElementById('feedback').className = "processing";
+        document.getElementById('result').textContent = "";
+        
+        console.log("Processing tricep dips video...");
+        let reps = 0, partialReps = 0, isDown = false;
+        
+        // Tricep dip specific thresholds
+        const ELBOW_BEND_THRESHOLD = 110; // Full dip - elbows bent significantly
+        const PARTIAL_BEND_THRESHOLD = 130; // Partial dip
+        const UP_POSITION_THRESHOLD = 150; // Arms extended
+        
+        let lastFeedback = "";
+        let framesSinceLastFeedback = 0;
+        const FEEDBACK_COOLDOWN = 15; // Frames to wait before giving same feedback
+
+        if (!poseLandmarker) {
+          await setupPoseLandmarker();
+          if (!poseLandmarker) {
+            const errorMsg = "Error: Could not initialize pose detection.";
+            document.getElementById('feedback').textContent = errorMsg;
+            document.getElementById('feedback').className = "error";
+            console.error(errorMsg);
+            reject(new Error(errorMsg));
+            return;
+          }
+        }
+
+        // Reset video to start
+        video.currentTime = 0;
+        video.muted = true;
+        
+        // Wait for video to be ready
+        await new Promise((res) => {
+          const onCanPlay = () => {
+            video.removeEventListener('canplay', onCanPlay);
+            res();
+          };
+          video.addEventListener('canplay', onCanPlay);
+          if (video.readyState >= 3) {
+            res();
+          }
+        });
+
+        const FRAME_SKIP = 2;
+        let frame = 0;
+        let lastProcessedTime = -1;
+        let previousElbowAngle = 0;
+
+        function giveFeedback(msg, className = "processing") {
+          if (msg !== lastFeedback || framesSinceLastFeedback > FEEDBACK_COOLDOWN) {
+            document.getElementById('feedback').textContent = msg;
+            document.getElementById('feedback').className = className;
+            console.log("Feedback:", msg);
+            lastFeedback = msg;
+            framesSinceLastFeedback = 0;
+          }
+          framesSinceLastFeedback++;
+        }
+
+        function analyzeForm(landmarks) {
+          const lm = landmarks[0];
+          const leftShoulder = lm[11], rightShoulder = lm[12];
+          const leftElbow = lm[13], rightElbow = lm[14];
+          const leftWrist = lm[15], rightWrist = lm[16];
+          const leftHip = lm[23], rightHip = lm[24];
+
+          // Calculate angles
+          const leftElbowAngle = calcAngle(leftShoulder, leftElbow, leftWrist);
+          const rightElbowAngle = calcAngle(rightShoulder, rightElbow, rightWrist);
+          const avgElbowAngle = (leftElbowAngle + rightElbowAngle) / 2;
+
+          // Check body alignment for tricep dips
+          const shoulderMidpoint = {
+            x: (leftShoulder.x + rightShoulder.x) / 2,
+            y: (leftShoulder.y + rightShoulder.y) / 2
+          };
+          const hipMidpoint = {
+            x: (leftHip.x + rightHip.x) / 2,
+            y: (leftHip.y + rightHip.y) / 2
+          };
+
+          // Check if torso is relatively upright (good tricep dip form)
+          const torsoAngle = Math.atan2(hipMidpoint.y - shoulderMidpoint.y, hipMidpoint.x - shoulderMidpoint.x) * (180 / Math.PI);
+          const isUprightTorso = Math.abs(torsoAngle) < 30; // Within 30 degrees of vertical
+
+          // Check if hands are positioned behind the body (tricep dip position)
+          const handsCorrectPosition = leftWrist.x < leftShoulder.x && rightWrist.x > rightShoulder.x;
+
+          return {
+            avgElbowAngle,
+            isUprightTorso,
+            handsCorrectPosition,
+            shoulderStability: Math.abs(leftElbowAngle - rightElbowAngle) < 20 // Both arms working similarly
+          };
+        }
+
+        function processFrame() {
+          try {
+            if (video.ended || video.currentTime >= video.duration) {
+              const resultText = `Analysis Complete! 💪 Full tricep dips: ${reps} | Partial dips: ${partialReps}`;
+              document.getElementById('result').textContent = resultText;
+              document.getElementById('feedback').textContent = "Tricep dips analysis complete!";
+              document.getElementById('feedback').className = "good-form";
+              console.log("Analysis complete.");
+              console.log("Final Results:", resultText);
+              
+              video.pause();
+              cleanup();
+              resolve({ reps, partialReps });
+              return;
+            }
+
+            if (frame % FRAME_SKIP === 0 && video.currentTime !== lastProcessedTime) {
+              lastProcessedTime = video.currentTime;
+              
+              try {
+                const results = poseLandmarker.detectForVideo(video, performance.now());
+                if (results.landmarks && results.landmarks.length > 0) {
+                  const formAnalysis = analyzeForm(results.landmarks);
+                  const { avgElbowAngle, isUprightTorso, handsCorrectPosition, shoulderStability } = formAnalysis;
+
+                  updateStats(reps, partialReps);
+
+                  // Form feedback
+                  if (!handsCorrectPosition) {
+                    giveFeedback("⚠️ Position hands behind your body on the surface", "form-feedback");
+                  } else if (!isUprightTorso) {
+                    giveFeedback("⚠️ Keep your torso upright, don't lean too far forward", "form-feedback");
+                  } else if (!shoulderStability) {
+                    giveFeedback("⚠️ Keep both arms working evenly", "form-feedback");
+                  } else {
+                    // Tricep dip detection logic
+                    if (!isDown && avgElbowAngle < ELBOW_BEND_THRESHOLD) {
+                      isDown = true;
+                      giveFeedback("🔥 Full dip detected - great depth!", "good-form");
+                    } else if (!isDown && avgElbowAngle < PARTIAL_BEND_THRESHOLD && avgElbowAngle >= ELBOW_BEND_THRESHOLD) {
+                      isDown = true;
+                      giveFeedback("📈 Partial dip - try to go deeper", "form-feedback");
+                    } else if (isDown && avgElbowAngle > UP_POSITION_THRESHOLD) {
+                      isDown = false;
+                      if (previousElbowAngle < ELBOW_BEND_THRESHOLD) {
+                        reps++;
+                        giveFeedback(`✅ Excellent full rep completed! Total: ${reps}`, "good-form");
+                      } else {
+                        partialReps++;
+                        giveFeedback(`⚡ Partial rep completed! Total: ${partialReps}`, "form-feedback");
+                      }
+                      updateStats(reps, partialReps);
+                    } else if (avgElbowAngle > UP_POSITION_THRESHOLD && !isDown) {
+                      giveFeedback("💪 Ready position - lower your body to start dip", "processing");
+                    } else if (isDown && avgElbowAngle < UP_POSITION_THRESHOLD) {
+                      giveFeedback("🔄 Push up to complete the rep", "processing");
+                    }
+                  }
+
+                  previousElbowAngle = avgElbowAngle;
+                }
+              } catch (error) {
+                console.error("Error processing frame:", error);
+              }
+            }
+            
+            frame++;
+            
+            if (!video.ended && video.currentTime < video.duration) {
+              animationFrameId = requestAnimationFrame(processFrame);
+            } else {
+              processFrame();
+            }
+            
+          } catch (error) {
+            console.error("Error in processFrame:", error);
+            document.getElementById('feedback').textContent = "Error during processing";
+            document.getElementById('feedback').className = "error";
+            cleanup();
+            reject(error);
+          }
+        }
+
+        try {
+          await video.play();
+          processFrame();
+        } catch (error) {
+          console.error("Error starting video playback:", error);
+          document.getElementById('feedback').textContent = "Error starting video playback";
+          document.getElementById('feedback').className = "error";
+          cleanup();
+          reject(error);
+        }
+      });
+    }
+
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      if (processing) {
+        console.log("Already processing a video. Please wait.");
+        document.getElementById('feedback').textContent = "Already processing a video. Please wait.";
+        return;
+      }
+      
+      cleanup();
+      
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      document.getElementById('result').textContent = "";
+      document.getElementById('feedback').textContent = "Loading tricep dips video...";
+      document.getElementById('feedback').className = "processing";
+      updateStats(0, 0);
+      
+      const url = URL.createObjectURL(file);
+      const video = document.getElementById('video');
+      video.src = url;
+      
+      video.onloadeddata = async () => {
+        try {
+          processing = true;
+          console.log("Starting tricep dips analysis...");
+          const results = await analyzeVideo(video);
+          console.log("Analysis completed with results:", results);
+        } catch (error) {
+          console.error("Video analysis failed:", error);
+          document.getElementById('feedback').textContent = "Video analysis failed: " + error.message;
+          document.getElementById('feedback').className = "error";
+        } finally {
+          processing = false;
+          URL.revokeObjectURL(url);
+        }
+      };
+
+      video.onerror = (error) => {
+        console.error("Video loading error:", error);
+        document.getElementById('feedback').textContent = "Error loading video file";
+        document.getElementById('feedback').className = "error";
+        processing = false;
+        URL.revokeObjectURL(url);
+      };
+    });
+
+    // Initialize the pose landmarker on page load
+    setupPoseLandmarker();
+  </script>
+</body>
+</html>

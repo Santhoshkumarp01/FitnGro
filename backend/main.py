@@ -35,7 +35,7 @@ if not firebase_admin._apps:
         cred_dict = json.loads(firebase_creds)
         cred = credentials.Certificate(cred_dict)
     else:
-        cred = credentials.Certificate(r"C:\Users\Santhosh kumar P\OneDrive\Desktop\FitnGro - Trail\FitnGro-Integr\backend\fitngro-dda45-firebase-adminsdk-fbsvc-0af755b9c5.json")
+        cred = credentials.Certificate(r"C:\Users\RANJITH R\Desktop\New folder (8)\FitnGro---Production\backend\fitngro-dda45-firebase-adminsdk-fbsvc-0af755b9c5.json")
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
