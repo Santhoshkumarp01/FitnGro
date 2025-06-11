@@ -17,7 +17,7 @@ import '../components/Dashboard/ExpertDashboard';
 import { db } from '../services/firebase';  // adjust path to match your project
 import { doc, getDoc } from 'firebase/firestore';
 import { setDoc, serverTimestamp } from 'firebase/firestore';
-import heroBg from '../assets/hero-img.jpg';
+import heroBg from '../assets/hero-4img.webp';
 
 
 // Animation variants
@@ -64,25 +64,19 @@ const HomePage = ({ userEmail }) => {
 
 
   const testimonials = [
+    
     {
       id: 1,
-      text: "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim. Donec pede justo, fringilla vel, aliquet nec, vulputate",
-      image: "frontend/src/assets/customer-1.png",
-      username: "Sudharsan",
-      role: "Developer"
+      text: "FitnGro revolutionizes fitness training for our institution. Its expert-guided plans and AI-powered workouts are accessible to all, with browser-based technology eliminating app download barriers. The real-time form correction ensures proper technique, making it ideal for both beginners and expert trainers.",
+      image: "frontend/src/assets/customer-2.jpeg",
+      username: "Vasanth",
+      role: "Educational Sports Authority - Disha School, Pollachi"
     },
     {
       id: 2,
-      text: "FitnGro revolutionizes fitness training for our institution. Its expert-guided plans and AI-powered workouts are accessible to all, with browser-based technology eliminating app download barriers. The real-time form correction ensures proper technique, making it ideal for both beginners and expert trainers.",
-      image: "frontend/src/assets/customer-2.jpeg",
-      username: "Vasnath Disha",
-      role: "Educational Sports Authority"
-    },
-    {
-      id: 3,
       text: "FitnGro’s AI-powered home training keeps me competition-ready. Its real-time movement analysis ensures precise form, and the browser-based platform allows training anywhere. It’s like having a 24/7 personal coach for consistent, professional-grade results",
-      image: "image 6.png",
-      username: "Priya S",
+      image: "frontend/src/assets/customer-1.png",
+      username: "Abeesh Selvan",
       role: "State-Level Javelin Thrower, University Games Champion"
     }
   ];
@@ -165,7 +159,7 @@ const solutions = [
   useEffect(() => {
     const fetchApprovedExperts = async () => {
       try {
-        const response = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/generate-plan', {
+        const response = await fetch('http://localhost:8000/approved-experts', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
@@ -183,36 +177,45 @@ const solutions = [
     fetchApprovedExperts();
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state changed - User:', user?.email);
-      setCurrentUser(user?.email || null);
+ useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    console.log('Auth state changed - User:', user?.email);
+    setCurrentUser(user?.email || null);
 
-      if (user) {
-        try {
-          console.log('Fetching expert document for email:', user.email);
-          const expertDocRef = doc(db, 'experts', user.email);
-          const expertDocSnap = await getDoc(expertDocRef);
-          console.log('Expert document exists:', expertDocSnap.exists());
-          setCurrentUserType(expertDocSnap.exists() ? 'expert' : 'normal');
-        } catch (error) {
-          console.error('Error checking expert status:', error);
-          console.log('Error code:', error.code);
-          console.log('Error message:', error.message);
-          if (error.code === 'permission-denied') {
-            console.log('Permission denied for experts document, setting user as normal');
-            setCurrentUserType('normal');
+    if (user) {
+      try {
+        const normalizedEmail = user.email.toLowerCase();
+        console.log('Fetching expert document for email:', normalizedEmail);
+        const expertDocRef = doc(db, 'experts', normalizedEmail);
+        const expertDocSnap = await getDoc(expertDocRef);
+        
+        if (expertDocSnap.exists()) {
+          const expertData = expertDocSnap.data();
+          if (expertData.approved) {
+            console.log('User is an approved expert');
+            setCurrentUserType('expert');
           } else {
-            setErrors({ form: `Error checking user type: ${error.message}` });
+            console.log('Expert account not yet approved');
+            setCurrentUserType('normal');
           }
+        } else {
+          console.log('No expert profile found, setting as normal user');
+          setCurrentUserType('normal');
         }
-      } else {
-        setCurrentUserType(null);
+      } catch (error) {
+        console.error('Error checking expert status:', error);
+        console.log('Error code:', error.code);
+        console.log('Error message:', error.message);
+        // Set as normal user on any error
+        setCurrentUserType('normal');
       }
-    });
+    } else {
+      setCurrentUserType(null);
+    }
+  });
 
-    return () => unsubscribe();
-  }, [navigate]);
+  return () => unsubscribe();
+}, [navigate]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -277,7 +280,7 @@ const solutions = [
         formData.append('certification', certification);
         formData.append('bio', bio);
 
-        const signupResponse = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/expert-signup', {
+        const signupResponse = await fetch('http://localhost:8000/expert-signup', {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${idToken}` },
           body: formData,
@@ -290,7 +293,7 @@ const solutions = [
 
         const responseData = await signupResponse.json();
         const certificateUrl = responseData.certificate_url;
-        const emailResponse = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/send-admin-email', {
+        const emailResponse = await fetch('http://localhost:8000/send-admin-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -372,7 +375,7 @@ const solutions = [
 
         // Call the /signin endpoint to add user to premiumUsers
         const idToken = await userCredential.user.getIdToken();
-        const signinResponse = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/signin', {
+        const signinResponse = await fetch('http://localhost:8000/signin', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${idToken}`,
@@ -414,7 +417,7 @@ const solutions = [
       const idToken = await result.user.getIdToken();
 
       // Call the /signin endpoint to add user to premiumUsers
-      const signinResponse = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/signin', {
+      const signinResponse = await fetch('http://localhost:8000/signin', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${idToken}`,
@@ -444,7 +447,7 @@ const solutions = [
         focus: formData.focus || formData.fitness_goal || "strength"
       });
       console.log("Authorization header:", `Bearer ${idToken}`);
-      const response = await fetch('https://fitngro-backend-bthfa8hrg7h3etd5.centralindia-01.azurewebsites.net/generate-plan', {
+      const response = await fetch('http://localhost:8000/generate-plan', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -531,6 +534,7 @@ const solutions = [
         {/* Left Navbar */}
         <motion.div className="navbar" variants={containerVariants}>
           <motion.div className="navbar-child" variants={itemVariants} />
+          
           {/* <motion.div className="fitness" variants={itemVariants}>Fitness</motion.div> */}
           <motion.div className="about" variants={itemVariants}>About</motion.div>
           <motion.div className="experts" variants={itemVariants} onClick={() => navigate('/experts')}>
@@ -560,7 +564,9 @@ const solutions = [
                 Logout
               </motion.button>
             )}
+            {/* <img className='w-13 h-10 ml-7 rounded-md' src='frontend/src/assets/FitnGro-Logo.png' /> */}
           </motion.div>
+          
         </motion.div>
 
         {/* Right Navbar with Hamburger Menu */}
@@ -810,9 +816,11 @@ const solutions = [
 
 
 <div
-  className="relative overflow-hidden bg-center bg-cover sm:bg-[url('')] lg:bg-[url('')]"
+  className="relative overflow-hidden bg-center bg-cover "
   style={{
-    backgroundImage: window.innerWidth >= 640 ? `url(${heroBg})` : 'none',
+    backgroundImage: `url(${heroBg})`,
+    backgroundPosition: 'center',
+    backgroundSize: 'cover',
   }}
 >
   {/* Background pattern (optional) */}
@@ -821,34 +829,41 @@ const solutions = [
   </div>
 
   {/* Container */}
-  <div className="max-w-7xl mx-auto px-4 lg:mt-10 sm:px-6 lg:px-8 py-20 md:py-8 lg:py-50 lg:ml-35">
+  <div className="max-w-7xl mx-auto px-4 lg:mt-0 sm:px-6 lg:px-8 py-20 md:py-8 lg:py-50 lg:ml-35">
     {/* Flex container for side-by-side layout */}
-    <div className="relative flex flex-col lg:ml-55 lg:mb-70 items-center lg:items-start gap-8 lg:gap-12">
+    <div className="relative flex flex-col lg:ml-55 lg:mb-10 items-center lg:items-start gap-8 lg:gap-12">
       
       {/* Left content */}
-      <div className="flex-1 text-center lg:mb-20 lg:max-w-2xl">
-        {/* Headline */}
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-black mb-6">
-          <span className="block">Transform Your</span>
-          <span className="block text-orange-600">Fitness Journey</span>
-        </h1>
+      <div className="flex-1 text-center lg:mb-35 lg:max-w-2xl">
+  <div className="bg-white/30 backdrop-blur-md rounded-xl p-8 shadow-lg">
+    {/* Headline */}
+    <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-black mb-6">
+      <span className="block">Transform Your</span>
+      <span className="block text-orange-600">Fitness Journey</span>
+    </h1>
 
-        {/* Subheading */}
-        <p className="text-lg md:text-xl text-gray-800 mb-10">
-          AI-powered workout plans tailored to your goals. No downloads required - 
-          access everything directly in your browser.
-        </p>
+    {/* Subheading */}
+    <p className="text-lg md:text-xl text-gray-800 mb-10">
+      AI-powered workout plans tailored to your goals. No downloads required – 
+      access everything directly in your browser.
+    </p>
 
-        {/* CTA Buttons */}
-        <div className="flex justify-center sm:flex-row gap-4">
-          <button className="px-8 py-3 bg-orange-600 hover:bg-[#000000] hover:text-[#ef4d31] text-white font-bold rounded-lg transition-all transform hover:scale-105 ">
-            Get Started Free
-          </button>
-          <button className="px-8 py-3 bg-transparent border-2 border-black text-black hover:bg-black hover:text-[#ef4d31] font-bold rounded-lg transition-all md:border-4">
-            Meet Our Experts
-          </button>
-        </div>
-      </div>
+    {/* CTA Buttons */}
+    <div className="flex justify-center sm:flex-row gap-4">
+      <button 
+      onClick={() => currentUser ? navigate('/login') : setShowAuth(true)}
+      className="px-8 py-3 bg-orange-600 hover:bg-black hover:text-[#ef4d31] text-white font-bold rounded-lg transition-all transform hover:scale-105">
+        Get Started Free
+      </button>
+      <button 
+      onClick={() => currentUser ? navigate('/experts') : setShowAuth(true)} 
+      className="px-8 py-3 bg-transparent border-2 border-black text-black hover:bg-black hover:text-[#ef4d31] font-bold rounded-lg transition-all md:border-4">
+        Meet Our Experts
+      </button>
+    </div>
+  </div>
+</div>
+
 
       {/* Right image */}
       {/* <div className="flex-1 flex justify-center lg:justify-end">
@@ -868,7 +883,7 @@ const solutions = [
 
 
     {/* Solutions Section */}
-<section className="py-16 bg-black">
+<section className="py-16 bg-black" id='solutionsSection' >
   <div className="max-w-7xl mx-auto px-4 sm:mt-0 sm:px-6 lg:px-8">
     <div className="text-center mb-12">
       <h2 className="text-4xl font-bold text-[#e4e4e4] mb-4 ">
@@ -926,7 +941,7 @@ const solutions = [
 </section>
 
 {/* Pricing Section */}
-<section className="py-16 bg-white">
+<section className="py-16 bg-white" id='pricingSection' >
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div className="text-center mb-12">
       <h2 className="text-3xl font-extrabold text-gray-900 drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)] sm:text-4xl">
@@ -981,7 +996,7 @@ const solutions = [
       </div>
 
       {/* Expert-Guided Plan */}
-      <div className="rounded-lg shadow-lg overflow-hidden bg-[#e4e4e4] border-4 border-[#000000] transform scale-105 relative">
+      <div  className="rounded-lg shadow-lg overflow-hidden bg-[#e4e4e4] border-4 border-[#000000] transform scale-105 relative">
         <div className="absolute top-0 right-0 bg-[#000000] text-[#ef4d31] px-3 py-1 text-xs font-semibold rounded-bl-lg">
           MOST POPULAR
         </div>
@@ -1039,7 +1054,7 @@ const solutions = [
 </section>
 
 {/* Features Section */}
-<section className="py-16 bg-black">
+<section className="py-16 bg-black"id='featuresSection'>
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div className="text-center mb-12">
       <h2 className="text-3xl font-extrabold text-[#e4e4e4] sm:text-4xl">
@@ -1085,7 +1100,7 @@ const solutions = [
 </section>
 
 {/* Testimonials Section */}
-<section className="py-16 bg-white relative overflow-hidden">
+<section className="py-16 bg-white relative overflow-hidden"id='testimonialsSection' >
   <div className="absolute top-0 left-0 w-full h-full opacity-5">
     <div className="absolute top-1/4 -left-10 w-64 h-64 bg-[#ef4d31] rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
     <div className="absolute top-1/2 right-0 w-64 h-64 bg-[#ef4d31] rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
@@ -1148,7 +1163,7 @@ const solutions = [
 </section>
 
 {/* About Us Section */}
-<section className="py-16 bg-black">
+<section className="py-16 bg-black"id='aboutSection' >
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div className="flex flex-col lg:flex-row items-center">
       <div className="lg:w-1/2 mb-12 lg:mb-0 lg:pr-12">
@@ -1197,7 +1212,7 @@ const solutions = [
 </section>
 
 {/* CTA Section */}
-<section className="py-16 bg-[#ef4d31]">
+<section className="py-16 bg-[#ef4d31]"id='ctaSection' >
   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
     <h2 className="text-3xl font-extrabold text-white sm:text-4xl mb-6">
       Ready to Transform Your Fitness Journey?
@@ -1229,13 +1244,13 @@ const solutions = [
       <img 
         src="Footer-Logo-FG.png" 
         alt="FitnGro" 
-        className="h-12 w-auto"
+        className="h-20 w-auto"
       />
       <p className="text-sm">
         Revolutionizing fitness with AI-powered technology and expert guidance.
       </p>
       <div className="flex space-x-4">
-        <a href="#" className="text-[#e4e4e4] hover:text-[#ef4d31] transition-colors">
+        <a href="" className="text-[#e4e4e4] hover:text-[#ef4d31] transition-colors">
           <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
             <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
           </svg>
@@ -1245,7 +1260,7 @@ const solutions = [
             <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
           </svg>
         </a>
-        <a href="#" className="text-[#e4e4e4] hover:text-[#ef4d31] transition-colors">
+        <a href="https://www.linkedin.com/company/fitngro/posts/?feedView=all" target='_blank' className="text-[#e4e4e4] hover:text-[#ef4d31] transition-colors">
           <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
             <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
           </svg>
@@ -1258,10 +1273,10 @@ const solutions = [
       <h3 className="text-lg font-semibold text-[#ef4d31] mb-4">Quick Links</h3>
       <ul className="space-y-2">
         <li><a href="#" className="hover:text-[#ef4d31] transition-colors">Home</a></li>
-        <li><a href="#" className="hover:text-[#ef4d31] transition-colors">About</a></li>
-        <li><a href="#" className="hover:text-[#ef4d31] transition-colors">Features</a></li>
-        <li><a href="#" className="hover:text-[#ef4d31] transition-colors">Pricing</a></li>
-        <li><a href="#" className="hover:text-[#ef4d31] transition-colors">Experts</a></li>
+        <li><a href="#aboutSection" className="hover:text-[#ef4d31] transition-colors">About</a></li>
+        <li><a href="#featuresSection" className="hover:text-[#ef4d31] transition-colors">Features</a></li>
+        <li><a href="#pricingSection" className="hover:text-[#ef4d31] transition-colors">Pricing</a></li>
+        <li><a href="#expertsSection" className="hover:text-[#ef4d31] transition-colors">Experts</a></li>
       </ul>
     </div>
 
