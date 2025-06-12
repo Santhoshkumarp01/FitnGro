@@ -161,25 +161,6 @@ async function initPose(modelComplexity = 1) {
   }
 }
 
-// Initialize MediaPipe Camera - FIXED VERSION
-async function initCamera(videoElement, onFrame) {
-  try {
-    await loadMediaPipeScripts();
-    
-    // Use the global Camera class that was loaded by the scripts
-    const camera = new window.Camera(videoElement, {
-      onFrame: onFrame,
-      width: 640,
-      height: 480
-    });
-    
-    return camera;
-  } catch (error) {
-    console.error('Error initializing MediaPipe Camera:', error);
-    throw error;
-  }
-}
-
 // Workout monitoring mapping with dynamic imports
 export const WORKOUT_MONITORING = {
   'push-ups': () => import('./workouts/pushUps.js').then(m => m.monitorPushUps),
@@ -193,6 +174,5 @@ export const UTILS = {
   syncProgress,
   getOptimalResolution,
   initPose,
-  initCamera,
   loadMediaPipeScripts,
 };
