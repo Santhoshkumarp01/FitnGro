@@ -17,7 +17,7 @@ import '../components/Dashboard/ExpertDashboard';
 import { db } from '../services/firebase';  // adjust path to match your project
 import { doc, getDoc } from 'firebase/firestore';
 import { setDoc, serverTimestamp } from 'firebase/firestore';
-import heroBg from '../assets/hero-img.jpg';
+// import heroBg from 'public/hero-4img.webp';
 
 
 // Animation variants
@@ -805,7 +805,7 @@ const solutions = [
 <div
   className="relative overflow-hidden bg-center bg-cover sm:bg-[url('')] lg:bg-[url('')]"
   style={{
-    backgroundImage: window.innerWidth >= 640 ? `url(${heroBg})` : 'none',
+    backgroundImage: window.innerWidth >= 640 ? `url(/public/hero-4img.webp)` : 'none',
   }}
 >
   {/* Background pattern (optional) */}
