@@ -4,7 +4,7 @@ import ReactPlayer from 'react-player';
 import { db } from '../services/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import axios from 'axios';
-import { WORKOUT_MONITORING } from '../workouts/workoutMonitoring';
+import { WORKOUT_MONITORING } from '../workoutMonitoring.js';
 import './ExerciseDetailPage.css';
 
 const cleanExerciseName = (name) => {
