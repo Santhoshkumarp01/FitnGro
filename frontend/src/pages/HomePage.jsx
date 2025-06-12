@@ -66,24 +66,17 @@ const HomePage = ({ userEmail }) => {
   const testimonials = [
     {
       id: 1,
-      text: "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim. Donec pede justo, fringilla vel, aliquet nec, vulputate",
+      text: "FitnGro’s AI-powered home training keeps me competition-ready. Its real-time movement analysis ensures precise form, and the browser-based platform allows training anywhere. It’s like having a 24/7 personal coach for consistent, professional-grade results",
       image: "/customer-1.png",
-      username: "Sudharsan",
-      role: "Developer"
+      username: "Abeesh Selvan",
+      role: "State-Level Javelin Thrower, University Games Champion"
     },
     {
       id: 2,
       text: "FitnGro revolutionizes fitness training for our institution. Its expert-guided plans and AI-powered workouts are accessible to all, with browser-based technology eliminating app download barriers. The real-time form correction ensures proper technique, making it ideal for both beginners and expert trainers.",
       image: "/customer-2.jpeg",
-      username: "Vasnath Disha",
-      role: "Educational Sports Authority"
-    },
-    {
-      id: 3,
-      text: "FitnGro’s AI-powered home training keeps me competition-ready. Its real-time movement analysis ensures precise form, and the browser-based platform allows training anywhere. It’s like having a 24/7 personal coach for consistent, professional-grade results",
-      image: "image 6.png",
-      username: "Priya S",
-      role: "State-Level Javelin Thrower, University Games Champion"
+      username: "Vasanth",
+      role: "Disha School, Head Of Physical Education Department"
     }
   ];
 
