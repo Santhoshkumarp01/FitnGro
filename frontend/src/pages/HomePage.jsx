@@ -67,14 +67,14 @@ const HomePage = ({ userEmail }) => {
     {
       id: 1,
       text: "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim. Donec pede justo, fringilla vel, aliquet nec, vulputate",
-      image: "frontend/src/assets/customer-1.png",
+      image: "/customer-1.png",
       username: "Sudharsan",
       role: "Developer"
     },
     {
       id: 2,
       text: "FitnGro revolutionizes fitness training for our institution. Its expert-guided plans and AI-powered workouts are accessible to all, with browser-based technology eliminating app download barriers. The real-time form correction ensures proper technique, making it ideal for both beginners and expert trainers.",
-      image: "frontend/src/assets/customer-2.jpeg",
+      image: "/customer-2.jpeg",
       username: "Vasnath Disha",
       role: "Educational Sports Authority"
     },
@@ -850,14 +850,7 @@ const solutions = [
         </div>
       </div>
 
-      {/* Right image */}
-      {/* <div className="flex-1 flex justify-center lg:justify-end">
-        <img 
-          src='frontend/src/assets/hero-ai.png' 
-          alt="AI Hero" 
-          className="w-80 h-80 lg:w-150 lg:h-150 xl:w-[500px] xl:h-[300px] object-contain"
-        /> 
-      </div> */}
+    
       
     </div>
   </div>
@@ -1183,7 +1176,7 @@ const solutions = [
       <div className="lg:w-1/2 relative">
         <div className="relative">
           <img 
-            src="frontend/src/assets/about-us/jj-team.JPG" 
+            src="/jj-team.JPG" 
             alt="FitnGro Team" 
             className="rounded-lg shadow-xl w-full h-auto"
           />
