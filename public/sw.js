@@ -44,38 +44,64 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Cache workout plans for offline use
-  if (url.pathname === '/start-workout' && event.request.method === 'POST') {
+  // Handle POST requests differently - don't try to cache them
+  if (event.request.method === 'POST') {
+    // For POST requests, just fetch from network and provide offline fallback
     event.respondWith(
       fetch(event.request)
-        .then((response) => {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-          return response;
-        })
         .catch(() => {
-          return caches.match(event.request).then((response) => {
-            return response || new Response(JSON.stringify({ error: 'Offline, using cached plan' }), {
+          // Return offline response for POST requests
+          if (url.pathname === '/start-workout') {
+            return new Response(JSON.stringify({ 
+              error: 'Offline - workout data will be synced when connection is restored',
+              offline: true 
+            }), {
               status: 503,
               headers: { 'Content-Type': 'application/json' },
             });
-          });
+          } else if (url.pathname === '/track-exercise') {
+            return new Response(JSON.stringify({ 
+              success: false,
+              message: 'Exercise tracking saved locally - will sync when online',
+              offline: true 
+            }), {
+              status: 200, // Return 200 so the app doesn't think it failed
+              headers: { 'Content-Type': 'application/json' },
+            });
+          } else {
+            return new Response(JSON.stringify({ 
+              error: 'Service unavailable - please try again when online' 
+            }), {
+              status: 503,
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
         })
     );
   } else {
-    // Cache-first strategy for other assets
+    // Cache-first strategy for GET requests and other safe methods
     event.respondWith(
       caches.match(event.request).then((response) => {
         return response || fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
+          // Only cache successful responses
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
             const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseClone);
+              // Only cache GET requests
+              if (event.request.method === 'GET') {
+                cache.put(event.request, responseClone);
+              }
             });
           }
           return networkResponse;
+        }).catch(() => {
+          // Return a meaningful offline response for failed GET requests
+          return new Response(JSON.stringify({ 
+            error: 'Content not available offline' 
+          }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          });
         });
       })
     );

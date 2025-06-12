@@ -38,7 +38,7 @@ async function storeProgress(data) {
   }
 }
 
-// Sync progress to Firestore when online
+// Sync progress to backend when online
 async function syncProgress(userEmail) {
   if (!navigator.onLine) return;
 
@@ -161,15 +161,14 @@ async function initPose(modelComplexity = 1) {
   }
 }
 
-// Initialize MediaPipe Camera
-async function initCamera(videoElement, onResults) {
+// Initialize MediaPipe Camera - FIXED VERSION
+async function initCamera(videoElement, onFrame) {
   try {
     await loadMediaPipeScripts();
     
+    // Use the global Camera class that was loaded by the scripts
     const camera = new window.Camera(videoElement, {
-      onFrame: async () => {
-        await pose.send({ image: videoElement });
-      },
+      onFrame: onFrame,
       width: 640,
       height: 480
     });

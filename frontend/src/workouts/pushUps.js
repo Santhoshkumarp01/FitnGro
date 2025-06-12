@@ -1,4 +1,4 @@
-import { Camera } from 'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js';
+// Remove the problematic import and use the utilities properly
 import { UTILS } from '../workoutMonitoring.js';
 
 const MIN_SHOULDER_DROP = 0.1;
@@ -26,14 +26,17 @@ export async function monitorPushUps({
     videoElement.width = width;
     videoElement.height = height;
 
-    const camera = new Camera(videoElement, {
-      onFrame: async () => {
-        if (videoElement.readyState === 4) {
-          await pose.send({ image: videoElement });
-        } else {
-          onFeedback('Camera not ready, please check permissions');
-        }
-      },
+    // Use the Camera from global scope (loaded by workoutMonitoring.js)
+    const camera = await UTILS.initCamera(videoElement, async () => {
+      if (videoElement.readyState === 4) {
+        await pose.send({ image: videoElement });
+      } else {
+        onFeedback('Camera not ready, please check permissions');
+      }
+    });
+
+    // Configure camera options
+    camera.setOptions({
       width,
       height,
       frameRate,
@@ -58,11 +61,16 @@ export async function monitorPushUps({
       return { stop: () => {} };
     }
 
+    // Battery optimization
     if (navigator.getBattery) {
-      const battery = await navigator.getBattery();
-      if (battery.level < 0.2) {
-        camera.setOptions({ frameRate: 10 });
-        onFeedback('Low battery, reduced frame rate');
+      try {
+        const battery = await navigator.getBattery();
+        if (battery.level < 0.2) {
+          camera.setOptions({ frameRate: 10 });
+          onFeedback('Low battery, reduced frame rate');
+        }
+      } catch (e) {
+        // Battery API not supported, continue normally
       }
     }
 
