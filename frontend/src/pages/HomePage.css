@@ -215,6 +215,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  border: 3px solid black;
   gap: 14px;
   z-index: 5;
 }
