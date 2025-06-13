@@ -3,6 +3,7 @@ import './Chatbot.css';
 import { db } from '../../services/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth } from '../../services/firebase';
+import { color } from 'framer-motion';
 
 const Chatbot = ({ userEmail, onGeneratePlan }) => {  
   const [isOpen, setIsOpen] = useState(false);
@@ -1334,7 +1335,7 @@ if (userInput.includes('motivate') || userInput.includes('encourage') || userInp
                           onChange={handleCheckboxChange}
                           disabled={isGeneratingPlan}
                         />
-                        {day}
+                        <span style={{color:'black'}} >{day}</span>
                       </label>
                     ))}
                   </div>
