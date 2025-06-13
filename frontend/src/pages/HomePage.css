@@ -124,6 +124,7 @@ html, body {
     left: 140px;
     backdrop-filter: blur(4px);
     border-radius: 12px;
+    border: 3px solid black;
     /* background-color: rgb(255 255 255 / 68%); */
     background-color: white;
 }
@@ -215,7 +216,8 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  border: 3px solid black;
+  border: 4px solid black;
+  border-radius: 12px;
   gap: 14px;
   z-index: 5;
 }
@@ -446,8 +448,8 @@ html, body {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   background-color: #f04e31;
   border: none;
   border-radius: 50%;
@@ -458,8 +460,8 @@ html, body {
 }
 
 .chatbot-toggle img {
-  width: 40px;
-  height: 40px;
+  width: 60px;
+  height: 60px;
 }
 /* video section hero */
 /* .hero-video {
@@ -2967,5 +2969,7 @@ z-index: 0;}
 .experts-list {
   margin-top: 20px;
 }
+
+
 
 

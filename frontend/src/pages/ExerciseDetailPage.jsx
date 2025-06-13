@@ -45,15 +45,15 @@ const ExerciseDetailPage = () => {
   const restDuration = 30;
 
   const exerciseDB = {
-    "Burpees (No Push-up)": {
+    "burpees (No Push-up)": {
       description: "Start in a standing position, drop to push-up position, push back up and jump.",
       videoUrl: "https://www.youtube.com/watch?v=TU8QYVW0gDU"
     },
-    "Squats (Holding Chair for Balance)": {
+    "squats (Holding Chair for Balance)": {
       description: "Stand with feet shoulder-width apart, lower hips until knees bend at 90°.",
       videoUrl: "https://www.youtube.com/watch?v=aclHkVaku9U"
     },
-    "Push-ups": {
+    "push-ups": {
       description: "Lie face down, place hands shoulder-width apart, push body up until arms are extended, then lower back down.",
       videoUrl: "https://www.youtube.com/watch?v=IODxDxX7oi4"
     }
