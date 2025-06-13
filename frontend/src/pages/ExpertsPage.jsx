@@ -121,13 +121,13 @@ const ExpertsPage = () => {
         animate="visible"
       >
         <motion.div className="navbar-child" variants={itemVariants} />
-        <motion.div 
+        {/* <motion.div 
           className="fitness text-gray-700 hover:text-blue-600 cursor-pointer font-medium transition-colors duration-200" 
           variants={itemVariants} 
           onClick={() => navigate('/fitness')}
         >
           Fitness
-        </motion.div>
+        </motion.div> */}
         <motion.div 
           className="about text-gray-700 hover:text-blue-600 cursor-pointer font-medium transition-colors duration-200" 
           variants={itemVariants} 

@@ -805,7 +805,7 @@ const solutions = [
 <div
   className="relative overflow-hidden bg-center bg-cover sm:bg-[url('')] lg:bg-[url('')]"
   style={{
-    backgroundImage: window.innerWidth >= 640 ? `url(/hero-4img.webp)` : 'none',
+    backgroundImage: window.innerWidth >= 340 ? `url(/hero-4img.webp)` : 'none',
   }}
 >
   {/* Background pattern (optional) */}
@@ -814,36 +814,50 @@ const solutions = [
   </div>
 
   {/* Container */}
-  <div className="max-w-7xl mx-auto px-4 lg:mt-10 sm:px-6 lg:px-8 py-20 md:py-8 lg:py-50 lg:ml-35">
+  <div className="max-w-7xl mx-auto px-4 lg:mt-0 sm:px-6 lg:px-8 py-20 md:py-8 lg:py-50 lg:ml-35">
     {/* Flex container for side-by-side layout */}
-    <div className="relative flex flex-col lg:ml-55 lg:mb-70 items-center lg:items-start gap-8 lg:gap-12">
+    <div className="relative flex flex-col lg:ml-55 lg:mb-10 items-center lg:items-start gap-8 lg:gap-12">
       
       {/* Left content */}
-      <div className="flex-1 text-center lg:mb-20 lg:max-w-2xl">
-        {/* Headline */}
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-black mb-6">
-          <span className="block">Transform Your</span>
-          <span className="block text-orange-600">Fitness Journey</span>
-        </h1>
+      <div className="flex-1 text-center lg:mb-35 lg:max-w-2xl">
+  <div className="backdrop-blur-md rounded-xl p-8 shadow-lg">
+    {/* Headline */}
+    <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-black mb-6">
+      <span className="block">Transform Your</span>
+      <span className="block text-orange-600">Fitness Journey</span>
+    </h1>
 
-        {/* Subheading */}
-        <p className="text-lg md:text-xl text-gray-800 mb-10">
-          AI-powered workout plans tailored to your goals. No downloads required - 
-          access everything directly in your browser.
-        </p>
+    {/* Subheading */}
+    <p className="text-lg md:text-xl text-gray-800 mb-10">
+      AI-powered workout plans tailored to your goals. No downloads required – 
+      access everything directly in your browser.
+    </p>
 
-        {/* CTA Buttons */}
-        <div className="flex justify-center sm:flex-row gap-4">
-          <button className="px-8 py-3 bg-orange-600 hover:bg-[#000000] hover:text-[#ef4d31] text-white font-bold rounded-lg transition-all transform hover:scale-105 ">
-            Get Started Free
-          </button>
-          <button className="px-8 py-3 bg-transparent border-2 border-black text-black hover:bg-black hover:text-[#ef4d31] font-bold rounded-lg transition-all md:border-4">
-            Meet Our Experts
-          </button>
-        </div>
-      </div>
+    {/* CTA Buttons */}
+    <div className="flex justify-center sm:flex-row gap-4">
+      <button 
+      onClick={() => currentUser ? navigate('/login') : setShowAuth(true)}
+      className="px-8 py-3 bg-orange-600 hover:bg-black hover:text-[#ef4d31] text-white font-bold rounded-lg transition-all transform hover:scale-105">
+        Get Started Free
+      </button>
+      <button 
+      onClick={() => currentUser ? navigate('/experts') : setShowAuth(true)} 
+      className="px-8 py-3 bg-transparent border-2 border-black text-black hover:bg-black hover:text-[#ef4d31] font-bold rounded-lg transition-all md:border-4">
+        Meet Our Experts
+      </button>
+    </div>
+  </div>
+</div>
 
-    
+
+      {/* Right image */}
+      {/* <div className="flex-1 flex justify-center lg:justify-end">
+        <img 
+          src='frontend/src/assets/hero-ai.png' 
+          alt="AI Hero" 
+          className="w-80 h-80 lg:w-150 lg:h-150 xl:w-[500px] xl:h-[300px] object-contain"
+        /> 
+      </div> */}
       
     </div>
   </div>
