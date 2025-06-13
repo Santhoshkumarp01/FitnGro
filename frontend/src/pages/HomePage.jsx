@@ -805,7 +805,7 @@ const solutions = [
 <div
   className="relative overflow-hidden bg-center bg-cover sm:bg-[url('')] lg:bg-[url('')]"
   style={{
-    backgroundImage: window.innerWidth >= 640 ? `url(/hero-4img.webp)` : 'none',
+    backgroundImage: window.innerWidth >= 340 ? `url(/hero-4img.webp)` : 'none',
   }}
 >
   {/* Background pattern (optional) */}
