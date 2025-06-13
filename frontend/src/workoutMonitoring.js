@@ -164,6 +164,7 @@ async function initPose(modelComplexity = 1) {
 // Workout monitoring mapping with dynamic imports
 export const WORKOUT_MONITORING = {
   'push-ups': () => import('./workouts/pushUps.js').then(m => m.monitorPushUps),
+  'squats': () => import('./workouts/squats.js').then(m => m.monitorSquats),
   // Add more workouts here, e.g., 'squats': () => import('./workouts/squats.js').then(m => m.monitorSquats),
 };
 
