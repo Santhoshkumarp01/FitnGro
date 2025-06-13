@@ -1385,7 +1385,7 @@ if (userInput.includes('motivate') || userInput.includes('encourage') || userInp
           onClick={() => setIsOpen(true)}
           disabled={isGeneratingPlan}
         >
-          <img src="/public/chatbot.png" alt="Chat" />
+          <img src="/public/chatbot.svg" alt="Chat" />
         </button>
       )}
     </div>
