@@ -1,4 +1,4 @@
-# Conservative version - minimal changes from your original
+# Ultra-safe version - ONLY changes that cannot possibly break anything
 name: Build and deploy Python app to Azure Web App - fitngro-backend
 
 on:
@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'  # ONLY change: add caching
+          # NO caching added - your original doesn't have it
 
       - name: Install dependencies
         run: |
@@ -37,13 +37,13 @@ jobs:
         run: |
           if [ -d "backend" ]; then
             cd backend
-            # ONLY change: exclude obvious unnecessary files
-            zip -r ../release.zip . -x "*.pyc" "__pycache__/*"
+            zip -r ../release.zip ./*
+            cd ..
           else
-            zip release.zip . -r -x "*.pyc" "__pycache__/*"
+            zip release.zip ./* -r
           fi
           
-          # Show size for monitoring
+          # ONLY addition: show size (cannot break anything)
           echo "Package size:"
           ls -lh release.zip
 
@@ -52,7 +52,7 @@ jobs:
         with:
           name: python-app
           path: release.zip
-          retention-days: 7  # ONLY change: reduce from 90 to 7 days
+          retention-days: 7  # ONLY change: reduce retention to save space
 
   deploy:
     runs-on: ubuntu-latest
