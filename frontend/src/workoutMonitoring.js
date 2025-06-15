@@ -165,6 +165,11 @@ async function initPose(modelComplexity = 1) {
 export const WORKOUT_MONITORING = {
   'push-ups': () => import('./workouts/pushUps.js').then(m => m.monitorPushUps),
   'squats': () => import('./workouts/squats.js').then(m => m.monitorSquats),
+   'jumpsquats': () => import('./workouts/jumpsquats.js').then(m => m.monitorJumpSquats),
+    'burpees': () => import('./workouts/burpees.js').then(m => m.monitorBurpees),
+     'plank': () => import('./workouts/plank.js').then(m => m.monitorPlank),
+     'lunges': () => import('./workouts/lunges.js').then(m => m.monitorLunges),
+
   // Add more workouts here, e.g., 'squats': () => import('./workouts/squats.js').then(m => m.monitorSquats),
 };
 

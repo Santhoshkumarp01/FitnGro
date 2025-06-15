@@ -2,43 +2,210 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Lunge Rep Counter (Video Upload, WASM)</title>
+  <title>Live Lunge Rep Counter (Camera Feed, WASM)</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-    #video { max-width: 100%; margin-bottom: 1em; }
-    #feedback { font-size: 1.2em; margin-top: 1em; color: #007bff; min-height: 30px; }
-    #result { font-size: 1.4em; margin-top: 1em; font-weight: bold; color: #28a745; }
-    #formFeedback { font-size: 1.1em; margin-top: 1em; padding: 10px; border-radius: 5px; }
+    body { 
+      font-family: Arial, sans-serif; 
+      max-width: 900px; 
+      margin: 0 auto; 
+      padding: 20px; 
+      background-color: #f8f9fa;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    .video-container {
+      position: relative;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    #webcam, #canvas {
+      max-width: 100%;
+      width: 640px;
+      height: 480px;
+      border-radius: 10px;
+    }
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    #startBtn {
+      background-color: #28a745;
+      color: white;
+    }
+    #startBtn:hover {
+      background-color: #218838;
+    }
+    #stopBtn {
+      background-color: #dc3545;
+      color: white;
+    }
+    #stopBtn:hover {
+      background-color: #c82333;
+    }
+    #resetBtn {
+      background-color: #6c757d;
+      color: white;
+    }
+    #resetBtn:hover {
+      background-color: #5a6268;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .status-panel {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 640px;
+    }
+    #repCounter {
+      font-size: 2.5em;
+      font-weight: bold;
+      color: #007bff;
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    #status {
+      font-size: 1.2em;
+      margin-bottom: 10px;
+      color: #007bff;
+      min-height: 30px;
+      text-align: center;
+    }
+    #formFeedback {
+      font-size: 1.1em;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 10px;
+      text-align: center;
+      min-height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
     .processing { color: #ffc107; }
     .error { color: #dc3545; }
-    .good-form { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-    .poor-form { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-    .warning-form { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    .good-form { 
+      background-color: #d4edda; 
+      color: #155724; 
+      border: 2px solid #c3e6cb; 
+    }
+    .poor-form { 
+      background-color: #f8d7da; 
+      color: #721c24; 
+      border: 2px solid #f5c6cb; 
+    }
+    .warning-form { 
+      background-color: #fff3cd; 
+      color: #856404; 
+      border: 2px solid #ffeeba; 
+    }
+    .neutral-form {
+      background-color: #e9ecef;
+      color: #495057;
+      border: 2px solid #ced4da;
+    }
+    h1 {
+      text-align: center;
+      color: #343a40;
+      margin-bottom: 10px;
+    }
+    .instructions {
+      text-align: center;
+      color: #6c757d;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
-  <h2>Lunge Rep Counter (Upload Video)</h2>
-  <p>Upload a video of yourself doing lunges. Make sure you're visible from the side for best detection.</p>
-  <input type="file" id="fileInput" accept="video/*">
-  <video id="video" controls muted></video>
-  <div id="feedback"></div>
-  <div id="formFeedback"></div>
-  <div id="result"></div>
+  <div class="container">
+    <h1>🏋️ Live Lunge Counter with Form Analysis</h1>
+    
+    <div class="instructions">
+      <p><strong>Instructions:</strong> Position yourself sideways to the camera for best detection. 
+      Start the camera and begin doing lunges. The system will count your reps and provide real-time form feedback.</p>
+    </div>
+
+    <div class="video-container">
+      <video id="webcam" autoplay muted playsinline></video>
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="controls">
+      <button id="startBtn">Start Camera & Analysis</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <button id="resetBtn">Reset Counter</button>
+    </div>
+
+    <div class="status-panel">
+      <div id="repCounter">Reps: 0</div>
+      <div id="status">Click "Start Camera & Analysis" to begin</div>
+      <div id="formFeedback" class="neutral-form">Position yourself sideways to the camera and get ready!</div>
+    </div>
+  </div>
 
   <script type="module">
     import {
       FilesetResolver,
       PoseLandmarker,
+      DrawingUtils
     } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
 
-    let poseLandmarker, vision, processing = false;
+    let poseLandmarker, webcam, canvasCtx, drawingUtils;
+    let isRunning = false, processing = false;
     let animationFrameId = null;
+    let lastVideoTime = -1;
 
-    async function setupPoseLandmarker() {
+    // Lunge detection variables
+    let reps = 0, isInLunge = false, lastFormFeedback = "";
+    let framesSinceLastRep = 0;
+    const FRAMES_BETWEEN_REPS = 20; // Minimum frames between rep counts
+    const DETECTION_CONFIDENCE = 0.6;
+
+    // DOM elements
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const statusDiv = document.getElementById('status');
+    const repCounterDiv = document.getElementById('repCounter');
+    const formFeedbackDiv = document.getElementById('formFeedback');
+
+    async function initializePoseLandmarker() {
       try {
-        vision = await FilesetResolver.forVisionTasks(
+        statusDiv.textContent = "Loading pose detection model...";
+        statusDiv.className = "processing";
+
+        const vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
         );
+        
         poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
@@ -46,29 +213,67 @@
           },
           runningMode: "VIDEO",
           numPoses: 1,
-          minPoseDetectionConfidence: 0.5,
-          minPosePresenceConfidence: 0.5,
+          minPoseDetectionConfidence: DETECTION_CONFIDENCE,
+          minPosePresenceConfidence: DETECTION_CONFIDENCE,
           minTrackingConfidence: 0.5,
           outputSegmentationMasks: false,
         });
-        console.log("PoseLandmarker initialized successfully");
-        document.getElementById('feedback').textContent = "Pose detection ready. Upload a video to analyze lunges.";
+
+        console.log("✅ PoseLandmarker initialized successfully with WASM");
+        statusDiv.textContent = "Pose detection ready!";
+        statusDiv.className = "";
+        return true;
       } catch (error) {
-        console.error("Failed to initialize PoseLandmarker:", error);
-        document.getElementById('feedback').textContent = "Failed to load pose detection model. Please try refreshing the page.";
-        document.getElementById('feedback').className = "error";
+        console.error("❌ Failed to initialize PoseLandmarker:", error);
+        statusDiv.textContent = "Failed to load pose detection. Please refresh and try again.";
+        statusDiv.className = "error";
+        return false;
       }
     }
 
-    function calcAngle(a, b, c) {
+    async function initializeCamera() {
+      try {
+        statusDiv.textContent = "Requesting camera access...";
+        statusDiv.className = "processing";
+
+        webcam = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        canvasCtx = canvas.getContext('2d');
+        drawingUtils = new DrawingUtils(canvasCtx);
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: 'user'
+          }
+        });
+
+        webcam.srcObject = stream;
+        
+        return new Promise((resolve) => {
+          webcam.onloadedmetadata = () => {
+            canvas.width = webcam.videoWidth;
+            canvas.height = webcam.videoHeight;
+            console.log("📹 Camera initialized:", canvas.width, "x", canvas.height);
+            statusDiv.textContent = "Camera ready! Starting pose detection...";
+            resolve(true);
+          };
+        });
+      } catch (error) {
+        console.error("❌ Camera initialization failed:", error);
+        statusDiv.textContent = "Camera access denied or failed. Please allow camera access.";
+        statusDiv.className = "error";
+        return false;
+      }
+    }
+
+    function calculateAngle(a, b, c) {
       const ab = Math.hypot(b.x - a.x, b.y - a.y);
       const bc = Math.hypot(c.x - b.x, c.y - b.y);
       const ac = Math.hypot(c.x - a.x, c.y - a.y);
-      return Math.acos((ab**2 + bc**2 - ac**2) / (2 * ab * bc)) * (180 / Math.PI);
-    }
-
-    function calcDistance(a, b) {
-      return Math.hypot(b.x - a.x, b.y - a.y);
+      const angle = Math.acos((ab**2 + bc**2 - ac**2) / (2 * ab * bc)) * (180 / Math.PI);
+      return isNaN(angle) ? 180 : angle;
     }
 
     function isLungePosition(landmarks) {
@@ -77,19 +282,19 @@
       const leftAnkle = landmarks[27], rightAnkle = landmarks[28];
       
       // Calculate knee angles
-      const leftKneeAngle = calcAngle(leftHip, leftKnee, leftAnkle);
-      const rightKneeAngle = calcAngle(rightHip, rightKnee, rightAnkle);
+      const leftKneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
+      const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
       
-      // Check if one leg is significantly more bent than the other (lunge characteristic)
+      // Check if one leg is significantly more bent than the other
       const angleDifference = Math.abs(leftKneeAngle - rightKneeAngle);
       
-      // Check foot separation (lunges have wider stance)
+      // Check foot separation for lunge stance
       const footSeparation = Math.abs(leftAnkle.x - rightAnkle.x);
       
-      // One knee should be significantly bent (< 140°) and legs should be separated
-      const hasLungeStance = (leftKneeAngle < 140 || rightKneeAngle < 140) && 
-                            angleDifference > 20 && 
-                            footSeparation > 0.1;
+      // Lunge criteria: one knee bent < 135°, significant angle difference, adequate foot separation
+      const hasLungeStance = (leftKneeAngle < 135 || rightKneeAngle < 135) && 
+                            angleDifference > 25 && 
+                            footSeparation > 0.08;
       
       return hasLungeStance;
     }
@@ -100,261 +305,263 @@
       const leftAnkle = landmarks[27], rightAnkle = landmarks[28];
       const nose = landmarks[0];
       
-      // Calculate knee angles
-      const leftKneeAngle = calcAngle(leftHip, leftKnee, leftAnkle);
-      const rightKneeAngle = calcAngle(rightHip, rightKnee, rightAnkle);
+      const leftKneeAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
+      const rightKneeAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
       
       let formFeedback = [];
       let formClass = "good-form";
       
-      // Determine which leg is the front leg (more bent)
+      // Determine front leg (more bent)
       const frontLeg = leftKneeAngle < rightKneeAngle ? 'left' : 'right';
       const frontKneeAngle = frontLeg === 'left' ? leftKneeAngle : rightKneeAngle;
       const backKneeAngle = frontLeg === 'left' ? rightKneeAngle : leftKneeAngle;
       const frontKnee = frontLeg === 'left' ? leftKnee : rightKnee;
       const frontAnkle = frontLeg === 'left' ? leftAnkle : rightAnkle;
       
-      // Check front knee alignment (shouldn't go too far forward over ankle)
-      if (frontKnee.x > frontAnkle.x + 0.05) {
-        formFeedback.push("Keep your front knee behind your toes");
+      // Form analysis
+      if (frontKnee.x > frontAnkle.x + 0.06) {
+        formFeedback.push("⚠️ Keep front knee behind toes");
         formClass = "poor-form";
       }
       
-      // Check if front knee angle is appropriate (should be around 90 degrees in deep lunge)
-      if (frontKneeAngle > 120) {
-        formFeedback.push("Go deeper - bend your front knee more");
+      if (frontKneeAngle > 130) {
+        formFeedback.push("📉 Go deeper - bend front knee more");
         formClass = "warning-form";
-      } else if (frontKneeAngle < 70) {
-        formFeedback.push("Don't go too low - maintain control");
-        formClass = "warning-form";
-      }
-      
-      // Check back leg - should be relatively straight or slightly bent
-      if (backKneeAngle < 140) {
-        formFeedback.push("Keep your back leg straighter");
+      } else if (frontKneeAngle < 60) {
+        formFeedback.push("⬆️ Don't go too low - maintain control");
         formClass = "warning-form";
       }
       
-      // Check torso position (nose should be relatively upright)
-      const torsoLean = Math.abs(nose.x - ((leftHip.x + rightHip.x) / 2));
-      if (torsoLean > 0.1) {
-        formFeedback.push("Keep your torso upright");
-        formClass = "warning-form";
+      if (backKneeAngle < 130) {
+        formFeedback.push("📏 Keep back leg straighter");
+        if (formClass !== "poor-form") formClass = "warning-form";
       }
       
-      // Good form feedback
+      // Check torso alignment
+      const hipCenter = { x: (leftHip.x + rightHip.x) / 2, y: (leftHip.y + rightHip.y) / 2 };
+      const torsoLean = Math.abs(nose.x - hipCenter.x);
+      if (torsoLean > 0.12) {
+        formFeedback.push("📐 Keep torso upright");
+        if (formClass !== "poor-form") formClass = "warning-form";
+      }
+      
       if (formFeedback.length === 0) {
-        formFeedback.push("Good form! Keep it up!");
+        formFeedback.push("✅ Excellent form! Keep it up!");
       }
       
-      return { feedback: formFeedback, class: formClass };
+      return { feedback: formFeedback.join(" | "), class: formClass };
     }
 
-    function cleanup() {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
+    function updateFormFeedback(feedback, className) {
+      if (feedback !== lastFormFeedback) {
+        formFeedbackDiv.textContent = feedback;
+        formFeedbackDiv.className = className;
+        lastFormFeedback = feedback;
       }
-      processing = false;
     }
 
-    async function analyzeVideo(video) {
-      return new Promise(async (resolve, reject) => {
-        document.getElementById('feedback').textContent = "Processing video...";
-        document.getElementById('feedback').className = "processing";
-        document.getElementById('result').textContent = "";
-        document.getElementById('formFeedback').textContent = "";
-        
-        console.log("Processing video for lunge detection...");
-        let reps = 0, isDown = false, lastFormFeedback = "";
-        let framesSinceLastLunge = 0;
-        const FRAMES_BETWEEN_REPS = 30; // Minimum frames between rep counts
+    function updateRepCounter() {
+      repCounterDiv.textContent = `Reps: ${reps}`;
+    }
 
-        if (!poseLandmarker) {
-          await setupPoseLandmarker();
-          if (!poseLandmarker) {
-            const errorMsg = "Error: Could not initialize pose detection.";
-            document.getElementById('feedback').textContent = errorMsg;
-            document.getElementById('feedback').className = "error";
-            console.error(errorMsg);
-            reject(new Error(errorMsg));
-            return;
-          }
-        }
+    function updateStatus(message, className = "") {
+      statusDiv.textContent = message;
+      statusDiv.className = className;
+    }
 
-        // Reset video to start
-        video.currentTime = 0;
-        video.muted = true;
-        
-        // Wait for video to be ready
-        await new Promise((res) => {
-          const onCanPlay = () => {
-            video.removeEventListener('canplay', onCanPlay);
-            res();
-          };
-          video.addEventListener('canplay', onCanPlay);
-          if (video.readyState >= 3) {
-            res();
-          }
-        });
-
-        const FRAME_SKIP = 2;
-        let frame = 0;
-        let lastProcessedTime = -1;
-
-        function giveFeedback(msg) {
-          document.getElementById('feedback').textContent = msg;
-          document.getElementById('feedback').className = "processing";
-          console.log("Feedback:", msg);
-        }
-
-        function giveFormFeedback(feedback, className) {
-          if (feedback !== lastFormFeedback) {
-            document.getElementById('formFeedback').textContent = feedback;
-            document.getElementById('formFeedback').className = className;
-            lastFormFeedback = feedback;
-          }
-        }
-
-        function processFrame() {
-          try {
-            // Check if video has ended
-            if (video.ended || video.currentTime >= video.duration) {
-              const resultText = `Analysis Complete - Lunges completed: ${reps}`;
-              document.getElementById('result').textContent = resultText;
-              document.getElementById('feedback').textContent = "Analysis complete.";
-              document.getElementById('feedback').className = "";
-              console.log("Lunge analysis complete.");
-              console.log("Final Results:", resultText);
-              
-              video.pause();
-              cleanup();
-              resolve({ reps });
-              return;
-            }
-
-            framesSinceLastLunge++;
-
-            // Only process every nth frame and avoid processing the same timestamp twice
-            if (frame % FRAME_SKIP === 0 && video.currentTime !== lastProcessedTime) {
-              lastProcessedTime = video.currentTime;
-              
-              try {
-                const results = poseLandmarker.detectForVideo(video, performance.now());
-                if (results.landmarks && results.landmarks.length > 0) {
-                  const landmarks = results.landmarks[0];
-                  
-                  // Check if current pose is a lunge
-                  const isCurrentlyLunge = isLungePosition(landmarks);
-                  
-                  if (isCurrentlyLunge) {
-                    // Analyze form and give feedback
-                    const formAnalysis = analyzeLungeForm(landmarks);
-                    giveFormFeedback(formAnalysis.feedback.join(", "), formAnalysis.class);
-                    
-                    if (!isDown && framesSinceLastLunge > FRAMES_BETWEEN_REPS) {
-                      isDown = true;
-                      giveFeedback("Lunge position detected");
-                    }
-                  } else {
-                    // Not in lunge position
-                    if (isDown && framesSinceLastLunge > FRAMES_BETWEEN_REPS) {
-                      isDown = false;
-                      reps++;
-                      framesSinceLastLunge = 0;
-                      giveFeedback(`Lunge completed: ${reps}`);
-                      giveFormFeedback("Return to starting position", "");
-                    } else if (!isDown) {
-                      giveFormFeedback("Get into lunge position", "");
-                    }
-                  }
-                } else {
-                  giveFormFeedback("Person not detected clearly", "warning-form");
-                }
-              } catch (error) {
-                console.error("Error processing frame:", error);
-              }
-            }
-            
-            frame++;
-            
-            // Continue processing if video is still playing
-            if (!video.ended && video.currentTime < video.duration) {
-              animationFrameId = requestAnimationFrame(processFrame);
-            } else {
-              processFrame();
-            }
-            
-          } catch (error) {
-            console.error("Error in processFrame:", error);
-            document.getElementById('feedback').textContent = "Error during processing";
-            document.getElementById('feedback').className = "error";
-            cleanup();
-            reject(error);
-          }
-        }
-
-        // Start processing
-        try {
-          await video.play();
-          processFrame();
-        } catch (error) {
-          console.error("Error starting video playback:", error);
-          document.getElementById('feedback').textContent = "Error starting video playback";
-          document.getElementById('feedback').className = "error";
-          cleanup();
-          reject(error);
+    function drawPoseKeypoints(landmarks) {
+      // Clear canvas
+      canvasCtx.clearRect(0, 0, canvasCtx.canvas.width, canvasCtx.canvas.height);
+      
+      // Draw pose connections
+      drawingUtils.drawLandmarks(landmarks, {
+        radius: (data) => DrawingUtils.lerp(data.from.z, -0.15, 0.1, 5, 1)
+      });
+      
+      drawingUtils.drawConnectors(landmarks, PoseLandmarker.POSE_CONNECTIONS, {
+        color: '#00FF00',
+        lineWidth: 2
+      });
+      
+      // Highlight key joints for lunge analysis
+      const keyJoints = [23, 24, 25, 26, 27, 28]; // hips, knees, ankles
+      keyJoints.forEach(index => {
+        const landmark = landmarks[index];
+        if (landmark) {
+          canvasCtx.beginPath();
+          canvasCtx.arc(
+            landmark.x * canvasCtx.canvas.width,
+            landmark.y * canvasCtx.canvas.height,
+            8, 0, 2 * Math.PI
+          );
+          canvasCtx.fillStyle = '#FF6B6B';
+          canvasCtx.fill();
         }
       });
     }
 
-    document.getElementById('fileInput').addEventListener('change', async (e) => {
-      if (processing) {
-        console.log("Already processing a video. Please wait.");
-        document.getElementById('feedback').textContent = "Already processing a video. Please wait.";
+    async function detectPose() {
+      if (!webcam || !poseLandmarker || !isRunning) return;
+
+      const currentTime = webcam.currentTime;
+      if (currentTime === lastVideoTime) {
+        animationFrameId = requestAnimationFrame(detectPose);
         return;
       }
-      
-      cleanup();
-      
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      document.getElementById('result').textContent = "";
-      document.getElementById('feedback').textContent = "Loading video...";
-      document.getElementById('formFeedback').textContent = "";
-      
-      const url = URL.createObjectURL(file);
-      const video = document.getElementById('video');
-      video.src = url;
-      
-      video.onloadeddata = async () => {
-        try {
-          processing = true;
-          console.log("Starting lunge analysis...");
-          const results = await analyzeVideo(video);
-          console.log("Analysis completed with results:", results);
-        } catch (error) {
-          console.error("Video analysis failed:", error);
-          document.getElementById('feedback').textContent = "Video analysis failed: " + error.message;
-          document.getElementById('feedback').className = "error";
-        } finally {
-          processing = false;
-          URL.revokeObjectURL(url);
-        }
-      };
+      lastVideoTime = currentTime;
 
-      video.onerror = (error) => {
-        console.error("Video loading error:", error);
-        document.getElementById('feedback').textContent = "Error loading video file";
-        document.getElementById('feedback').className = "error";
+      try {
+        const results = poseLandmarker.detectForVideo(webcam, performance.now());
+        
+        if (results.landmarks && results.landmarks.length > 0) {
+          const landmarks = results.landmarks[0];
+          
+          // Draw pose on canvas
+          drawPoseKeypoints(landmarks);
+          
+          framesSinceLastRep++;
+          
+          const isCurrentlyLunge = isLungePosition(landmarks);
+          
+          if (isCurrentlyLunge) {
+            const formAnalysis = analyzeLungeForm(landmarks);
+            updateFormFeedback(formAnalysis.feedback, formAnalysis.class);
+            
+            if (!isInLunge && framesSinceLastRep > FRAMES_BETWEEN_REPS) {
+              isInLunge = true;
+              updateStatus("🔥 Lunge detected!", "processing");
+            }
+          } else {
+            if (isInLunge && framesSinceLastRep > FRAMES_BETWEEN_REPS) {
+              isInLunge = false;
+              reps++;
+              framesSinceLastRep = 0;
+              updateRepCounter();
+              updateStatus(`💪 Rep completed! Total: ${reps}`, "");
+              updateFormFeedback("🔄 Return to starting position", "neutral-form");
+            } else if (!isInLunge) {
+              updateFormFeedback("👀 Position yourself for a lunge", "neutral-form");
+              updateStatus("Ready for next lunge...", "");
+            }
+          }
+        } else {
+          updateFormFeedback("❌ Person not detected - step into frame", "warning-form");
+          updateStatus("Waiting for person detection...", "processing");
+        }
+      } catch (error) {
+        console.error("❌ Pose detection error:", error);
+        updateStatus("Detection error occurred", "error");
+      }
+
+      if (isRunning) {
+        animationFrameId = requestAnimationFrame(detectPose);
+      }
+    }
+
+    async function startAnalysis() {
+      if (processing) return;
+      processing = true;
+
+      try {
+        startBtn.disabled = true;
+        updateStatus("Initializing...", "processing");
+
+        // Initialize pose landmarker if not already done
+        if (!poseLandmarker) {
+          const success = await initializePoseLandmarker();
+          if (!success) {
+            processing = false;
+            startBtn.disabled = false;
+            return;
+          }
+        }
+
+        // Initialize camera
+        const cameraSuccess = await initializeCamera();
+        if (!cameraSuccess) {
+          processing = false;
+          startBtn.disabled = false;
+          return;
+        }
+
+        // Start detection loop
+        isRunning = true;
+        updateStatus("🚀 Live analysis active!", "");
+        updateFormFeedback("💪 Start doing lunges!", "neutral-form");
+        
+        stopBtn.disabled = false;
+        detectPose();
+
+      } catch (error) {
+        console.error("❌ Failed to start analysis:", error);
+        updateStatus("Failed to start. Please try again.", "error");
+        startBtn.disabled = false;
+      } finally {
         processing = false;
-        URL.revokeObjectURL(url);
-      };
+      }
+    }
+
+    function stopAnalysis() {
+      isRunning = false;
+      
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+
+      if (webcam && webcam.srcObject) {
+        const tracks = webcam.srcObject.getTracks();
+        tracks.forEach(track => track.stop());
+        webcam.srcObject = null;
+      }
+
+      // Clear canvas
+      if (canvasCtx) {
+        canvasCtx.clearRect(0, 0, canvasCtx.canvas.width, canvasCtx.canvas.height);
+      }
+
+      updateStatus("Analysis stopped", "");
+      updateFormFeedback("Click 'Start' to begin analysis", "neutral-form");
+      
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      
+      console.log("🛑 Analysis stopped");
+    }
+
+    function resetCounter() {
+      reps = 0;
+      isInLunge = false;
+      framesSinceLastRep = 0;
+      lastFormFeedback = "";
+      
+      updateRepCounter();
+      updateFormFeedback("Counter reset - ready to start!", "neutral-form");
+      
+      if (!isRunning) {
+        updateStatus("Click 'Start Camera & Analysis' to begin", "");
+      }
+      
+      console.log("🔄 Counter reset");
+    }
+
+    // Event listeners
+    startBtn.addEventListener('click', startAnalysis);
+    stopBtn.addEventListener('click', stopAnalysis);
+    resetBtn.addEventListener('click', resetCounter);
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log("🏃‍♂️ Live Lunge Counter initialized");
+      updateStatus("Ready to start! Click the button below.", "");
     });
 
-    // Initialize the pose landmarker on page load
-    setupPoseLandmarker();
+    // Handle page unload
+    window.addEventListener('beforeunload', () => {
+      if (isRunning) {
+        stopAnalysis();
+      }
+    });
   </script>
 </body>
 </html>
