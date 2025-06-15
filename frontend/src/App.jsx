@@ -16,7 +16,17 @@ const AppRoutes = ({ user, loading }) => {
   const location = useLocation();
 
   if (loading) {
-    return <div className="loading-spinner">Loading...</div>;
+    return (
+  <div className="fixed inset-0 flex items-center justify-center bg-gray-50 z-50">
+    <div className="text-center p-8">
+      <div className="inline-flex items-center justify-center w-16 h-16 mb-4 bg-blue-100 rounded-full">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+      <h2 className="text-xl font-semibold text-gray-800 mb-2">FitNGro</h2>
+      <p className="text-gray-600">Preparing your fitness journey...</p>
+    </div>
+  </div>
+);
   }
 
   if (user && user.email === 'fitngro@gmail.com' && location.pathname !== '/admin') {
