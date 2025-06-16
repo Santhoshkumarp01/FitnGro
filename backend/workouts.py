@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import datetime
 
-# ---------- EXERCISE DATA ----------
+# --------- EXERCISE DATA ---------
 EXERCISES = {
     # General Fitness Exercises (12 core exercises for monitoring)
     0: ("Squats", "reps"),
