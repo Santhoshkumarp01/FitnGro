@@ -2,79 +2,278 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Burpee Rep Counter (Video Upload, WASM)</title>
+  <title>Live Burpee Rep Counter (Real-time WASM)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 800px;
+      max-width: 1000px;
       margin: 0 auto;
       padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      min-height: 100vh;
     }
+    
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    }
+    
+    h2 {
+      text-align: center;
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .subtitle {
+      text-align: center;
+      font-size: 1.2em;
+      margin-bottom: 30px;
+      opacity: 0.9;
+    }
+    
+    #videoContainer {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    
     #video { 
       max-width: 100%; 
-      margin-bottom: 1em; 
-      border: 2px solid #ddd;
-      border-radius: 8px;
+      width: 640px;
+      height: 480px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 15px;
+      background: black;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
     }
-    #feedback { 
-      font-size: 1.2em; 
-      margin-top: 1em; 
-      color: #007bff; 
-      min-height: 50px;
-      padding: 10px;
-      background-color: #f8f9fa;
-      border-radius: 5px;
-    }
-    #result { 
-      font-size: 1.4em; 
-      margin-top: 1em; 
-      font-weight: bold; 
-      color: #28a745; 
-      padding: 10px;
-      background-color: #d4edda;
-      border-radius: 5px;
-    }
-    .processing { color: #ffc107; background-color: #fff3cd; }
-    .error { color: #dc3545; background-color: #f8d7da; }
-    .warning { color: #856404; background-color: #fff3cd; }
-    .good-form { color: #155724; background-color: #d4edda; }
-    #fileInput {
+    
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
       margin-bottom: 20px;
-      padding: 10px;
-      border: 2px dashed #007bff;
-      border-radius: 5px;
-      width: 100%;
-      box-sizing: border-box;
     }
+    
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: bold;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    
+    #startBtn {
+      background: linear-gradient(45deg, #4CAF50, #45a049);
+      color: white;
+    }
+    
+    #stopBtn {
+      background: linear-gradient(45deg, #f44336, #da190b);
+      color: white;
+    }
+    
+    #resetBtn {
+      background: linear-gradient(45deg, #ff9800, #e68900);
+      color: white;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+    
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .stats-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .stat-card {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 20px;
+      border-radius: 15px;
+      text-align: center;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .stat-number {
+      font-size: 2.5em;
+      font-weight: bold;
+      margin-bottom: 5px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .stat-label {
+      font-size: 1em;
+      opacity: 0.9;
+    }
+    
+    #phase-display {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    
     .phase-indicator {
       display: inline-block;
-      padding: 5px 10px;
-      margin: 2px;
-      border-radius: 15px;
-      font-size: 0.9em;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 25px;
+      font-size: 1em;
       font-weight: bold;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
     }
-    .phase-active { background-color: #28a745; color: white; }
-    .phase-inactive { background-color: #6c757d; color: white; }
+    
+    .phase-active { 
+      background: linear-gradient(45deg, #4CAF50, #45a049);
+      color: white;
+      transform: scale(1.1);
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+    }
+    
+    .phase-inactive { 
+      background: rgba(255, 255, 255, 0.2);
+      color: rgba(255, 255, 255, 0.7);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .phase-completed {
+      background: linear-gradient(45deg, #4CAF50, #45a049);
+      color: white;
+      border: 2px solid #4CAF50;
+    }
+    
+    #feedback {
+      font-size: 1.3em;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      text-align: center;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.3s ease;
+    }
+    
+    .processing { 
+      background: linear-gradient(45deg, #2196F3, #1976D2);
+      animation: pulse 2s infinite;
+    }
+    
+    .error { 
+      background: linear-gradient(45deg, #f44336, #d32f2f);
+      animation: shake 0.5s ease-in-out;
+    }
+    
+    .warning { 
+      background: linear-gradient(45deg, #ff9800, #f57c00);
+      animation: warning-pulse 1.5s infinite;
+    }
+    
+    .good-form { 
+      background: linear-gradient(45deg, #4CAF50, #388e3c);
+      animation: success-glow 1s ease-out;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    
+    @keyframes warning-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+    }
+    
+    @keyframes success-glow {
+      0% { box-shadow: 0 0 5px rgba(76, 175, 80, 0.5); }
+      50% { box-shadow: 0 0 20px rgba(76, 175, 80, 0.8); }
+      100% { box-shadow: 0 0 5px rgba(76, 175, 80, 0.5); }
+    }
+    
+    .permission-prompt {
+      text-align: center;
+      padding: 40px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      margin-bottom: 20px;
+    }
+    
+    .camera-icon {
+      font-size: 4em;
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
-  <h2>🏃‍♂️ Burpee Rep Counter with Form Analysis</h2>
-  <p>Upload a video to automatically count burpees and get form feedback!</p>
-  
-  <input type="file" id="fileInput" accept="video/*" placeholder="Choose video file...">
-  <video id="video" controls muted></video>
-  
-  <div id="phase-display">
-    <strong>Burpee Phases:</strong><br>
-    <span class="phase-indicator phase-inactive" id="phase-squat">Squat Down</span>
-    <span class="phase-indicator phase-inactive" id="phase-plank">Plank/Push-up</span>
-    <span class="phase-indicator phase-inactive" id="phase-return">Return to Squat</span>
-    <span class="phase-indicator phase-inactive" id="phase-jump">Jump Up</span>
+  <div class="container">
+    <h2>🏃‍♂️ Live Burpee Counter</h2>
+    <p class="subtitle">Real-time rep counting with AI-powered form feedback</p>
+    
+    <div id="videoContainer">
+      <video id="video" autoplay muted playsinline></video>
+    </div>
+    
+    <div class="controls">
+      <button id="startBtn">🎥 Start Camera</button>
+      <button id="stopBtn" disabled>⏹️ Stop</button>
+      <button id="resetBtn">🔄 Reset Count</button>
+    </div>
+    
+    <div class="stats-container">
+      <div class="stat-card">
+        <div class="stat-number" id="burpeeCount">0</div>
+        <div class="stat-label">Perfect Burpees</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="partialCount">0</div>
+        <div class="stat-label">Partial Reps</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="totalCount">0</div>
+        <div class="stat-label">Total Attempts</div>
+      </div>
+    </div>
+    
+    <div id="phase-display">
+      <strong>Current Burpee Phase:</strong><br><br>
+      <span class="phase-indicator phase-inactive" id="phase-squat">🏋️ Squat Down</span>
+      <span class="phase-indicator phase-inactive" id="phase-pushup">💪 Push-up</span>
+      <span class="phase-indicator phase-inactive" id="phase-return">🔄 Return to Squat</span>
+      <span class="phase-indicator phase-inactive" id="phase-jump">🚀 Jump Up</span>
+    </div>
+    
+    <div id="feedback" class="processing">Click "Start Camera" to begin live burpee tracking!</div>
   </div>
-  
-  <div id="feedback">Ready to analyze burpee form and count reps!</div>
-  <div id="result"></div>
 
   <script type="module">
     import {
@@ -82,21 +281,48 @@
       PoseLandmarker,
     } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
 
-    let poseLandmarker, vision, processing = false;
+    let poseLandmarker, vision;
+    let video, stream;
     let animationFrameId = null;
+    let isTracking = false;
 
-    // Burpee phase tracking
-    let currentPhase = 'standing'; // standing, squatting, plank, returning, jumping
+    // Burpee tracking variables
+    let currentPhase = 'standing'; 
     let burpeeCount = 0;
     let partialBurpees = 0;
     let lastFeedback = "";
     let phaseStartTime = 0;
+    let phaseConfidence = 0;
+    let framesSincePhaseChange = 0;
+
+    // Enhanced push-up tracking
+    let pushupCompleted = false;
+    let pushupDetectionFrames = 0;
+    let minElbowAngleInPhase = 180; // Track the minimum elbow angle during pushup phase
+    let completedPhases = {
+      squat: false,
+      pushup: false,
+      return: false,
+      jump: false
+    };
+
+    // Get DOM elements
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const feedbackDiv = document.getElementById('feedback');
+    const burpeeCountDiv = document.getElementById('burpeeCount');
+    const partialCountDiv = document.getElementById('partialCount');
+    const totalCountDiv = document.getElementById('totalCount');
 
     async function setupPoseLandmarker() {
       try {
+        giveFeedback("Loading AI pose detection model...", "processing");
+        
         vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
         );
+        
         poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
@@ -104,18 +330,106 @@
           },
           runningMode: "VIDEO",
           numPoses: 1,
-          minPoseDetectionConfidence: 0.5,
-          minPosePresenceConfidence: 0.5,
-          minTrackingConfidence: 0.5,
+          minPoseDetectionConfidence: 0.7,
+          minPosePresenceConfidence: 0.7,
+          minTrackingConfidence: 0.7,
           outputSegmentationMasks: false,
         });
+        
+        giveFeedback("AI model loaded successfully! Click 'Start Camera' to begin.", "good-form");
         console.log("PoseLandmarker initialized successfully");
-        document.getElementById('feedback').textContent = "Pose detection ready. Upload a video to analyze burpees.";
+        
       } catch (error) {
         console.error("Failed to initialize PoseLandmarker:", error);
-        document.getElementById('feedback').textContent = "Failed to load pose detection model. Please try refreshing the page.";
-        document.getElementById('feedback').className = "error";
+        giveFeedback("Failed to load AI model. Please refresh the page and try again.", "error");
       }
+    }
+
+    async function startCamera() {
+      try {
+        giveFeedback("Requesting camera access...", "processing");
+        
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: 'user'
+          }
+        });
+        
+        video = document.getElementById('video');
+        video.srcObject = stream;
+        
+        video.onloadeddata = () => {
+          startBtn.disabled = true;
+          stopBtn.disabled = false;
+          isTracking = true;
+          
+          giveFeedback("Camera ready! Position yourself in frame and start doing burpees!", "good-form");
+          
+          if (poseLandmarker) {
+            processVideo();
+          } else {
+            giveFeedback("AI model not ready. Please wait...", "warning");
+          }
+        };
+        
+      } catch (error) {
+        console.error("Camera access error:", error);
+        giveFeedback("Camera access denied. Please allow camera permissions and try again.", "error");
+      }
+    }
+
+    function stopCamera() {
+      isTracking = false;
+      
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      
+      if (video) {
+        video.srcObject = null;
+      }
+      
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      
+      resetPhaseDisplay();
+      giveFeedback("Camera stopped. Click 'Start Camera' to resume tracking.", "processing");
+    }
+
+    function resetCount() {
+      burpeeCount = 0;
+      partialBurpees = 0;
+      currentPhase = 'standing';
+      phaseStartTime = 0;
+      phaseConfidence = 0;
+      framesSincePhaseChange = 0;
+      pushupCompleted = false;
+      pushupDetectionFrames = 0;
+      minElbowAngleInPhase = 180;
+      completedPhases = { squat: false, pushup: false, return: false, jump: false };
+      
+      updateStats();
+      resetPhaseDisplay();
+      
+      if (isTracking) {
+        giveFeedback("Count reset! Continue with your burpees.", "good-form");
+      } else {
+        giveFeedback("Count reset. Start camera to begin tracking.", "processing");
+      }
+    }
+
+    function updateStats() {
+      burpeeCountDiv.textContent = burpeeCount;
+      partialCountDiv.textContent = partialBurpees;
+      totalCountDiv.textContent = burpeeCount + partialBurpees;
     }
 
     function calcAngle(a, b, c) {
@@ -125,23 +439,32 @@
       return Math.acos((ab**2 + bc**2 - ac**2) / (2 * ab * bc)) * (180 / Math.PI);
     }
 
-    function calcDistance(a, b) {
-      return Math.hypot(b.x - a.x, b.y - a.y);
-    }
-
     function updatePhaseDisplay(phase) {
-      // Reset all phases
       document.querySelectorAll('.phase-indicator').forEach(el => {
         el.className = 'phase-indicator phase-inactive';
       });
       
-      // Activate current phase
+      // Mark completed phases
+      if (completedPhases.squat) {
+        document.getElementById('phase-squat').className = 'phase-indicator phase-completed';
+      }
+      if (completedPhases.pushup) {
+        document.getElementById('phase-pushup').className = 'phase-indicator phase-completed';
+      }
+      if (completedPhases.return) {
+        document.getElementById('phase-return').className = 'phase-indicator phase-completed';
+      }
+      if (completedPhases.jump) {
+        document.getElementById('phase-jump').className = 'phase-indicator phase-completed';
+      }
+      
+      // Mark current active phase
       switch(phase) {
         case 'squatting':
           document.getElementById('phase-squat').className = 'phase-indicator phase-active';
           break;
-        case 'plank':
-          document.getElementById('phase-plank').className = 'phase-indicator phase-active';
+        case 'pushup':
+          document.getElementById('phase-pushup').className = 'phase-indicator phase-active';
           break;
         case 'returning':
           document.getElementById('phase-return').className = 'phase-indicator phase-active';
@@ -152,11 +475,16 @@
       }
     }
 
+    function resetPhaseDisplay() {
+      document.querySelectorAll('.phase-indicator').forEach(el => {
+        el.className = 'phase-indicator phase-inactive';
+      });
+    }
+
     function giveFeedback(msg, type = "processing") {
       if (msg !== lastFeedback) {
-        document.getElementById('feedback').textContent = msg;
-        document.getElementById('feedback').className = type;
-        console.log("Feedback:", msg);
+        feedbackDiv.textContent = msg;
+        feedbackDiv.className = type;
         lastFeedback = msg;
       }
     }
@@ -186,282 +514,198 @@
       const shoulderHeight = (leftShoulder.y + rightShoulder.y) / 2;
       const hipHeight = (leftHip.y + rightHip.y) / 2;
       const handHeight = (leftWrist.y + rightWrist.y) / 2;
-      const kneeHeight = (leftKnee.y + rightKnee.y) / 2;
+      const noseHeight = nose.y;
 
-      // Determine if person is in plank position (hands on ground, body extended)
-      const isInPlankPosition = handHeight > shoulderHeight && 
-                               Math.abs(shoulderHeight - hipHeight) < 0.15 &&
-                               avgElbowAngle > 150;
-
-      // Determine if person is squatting (knees bent, upright torso)
-      const isSquatting = avgKneeAngle < 120 && shoulderHeight < hipHeight + 0.1;
-
-      // Determine if person is standing/jumping (legs straight, upright)
-      const isStanding = avgKneeAngle > 160 && shoulderHeight < hipHeight - 0.05;
-
-      // Check if person is jumping (feet off ground or very straight legs with upward movement)
-      const isJumping = avgKneeAngle > 170 && shoulderHeight < hipHeight - 0.1;
+      // Position analysis
+      const isSquatting = avgKneeAngle < 130 && shoulderHeight > hipHeight - 0.1;
+      const isInPushupPosition = handHeight > shoulderHeight && 
+                                Math.abs(shoulderHeight - hipHeight) < 0.15 &&
+                                noseHeight > shoulderHeight - 0.1;
+      const isJumping = avgKneeAngle > 160 && noseHeight < shoulderHeight - 0.1;
+      const isStanding = avgKneeAngle > 150 && shoulderHeight < hipHeight;
 
       return {
         avgKneeAngle,
         avgElbowAngle,
-        isInPlankPosition,
         isSquatting,
-        isStanding,
+        isInPushupPosition,
         isJumping,
+        isStanding,
         shoulderHeight,
         hipHeight,
-        handHeight
+        handHeight,
+        noseHeight
       };
     }
 
-    function processBurpeeMovement(posture, currentTime) {
-      const timeInPhase = currentTime - phaseStartTime;
-      
+    function processBurpeeMovement(posture) {
+      framesSincePhaseChange++;
+      const minFramesForPhaseChange = 5; // Require consistency over multiple frames
+
       switch(currentPhase) {
         case 'standing':
-          if (posture.isSquatting) {
+          if (posture.isSquatting && framesSincePhaseChange > minFramesForPhaseChange) {
             currentPhase = 'squatting';
-            phaseStartTime = currentTime;
+            framesSincePhaseChange = 0;
+            completedPhases.squat = true;
             updatePhaseDisplay('squatting');
-            giveFeedback("Good! Squatting down - keep your back straight", "good-form");
+            giveFeedback("🏋️ Good squat! Now go into push-up position", "good-form");
           }
           break;
 
         case 'squatting':
-          if (posture.isInPlankPosition) {
-            currentPhase = 'plank';
-            phaseStartTime = currentTime;
-            updatePhaseDisplay('plank');
-            giveFeedback("Excellent! In plank position - hold it steady", "good-form");
-          } else if (timeInPhase > 2000) { // Too long in squat
-            giveFeedback("Move to plank position - place hands on ground and extend legs back", "warning");
+          if (posture.isInPushupPosition && framesSincePhaseChange > minFramesForPhaseChange) {
+            currentPhase = 'pushup';
+            framesSincePhaseChange = 0;
+            pushupCompleted = false;
+            pushupDetectionFrames = 0;
+            minElbowAngleInPhase = 180; // Reset minimum angle tracker
+            updatePhaseDisplay('pushup');
+            giveFeedback("💪 Perfect! In push-up position - now do the push-up!", "good-form");
+          } else if (framesSincePhaseChange > 60) { // ~2 seconds at 30fps
+            giveFeedback("⚠️ Place hands on ground and extend legs back for push-up position", "warning");
           }
           break;
 
-        case 'plank':
-          if (posture.isSquatting) {
-            currentPhase = 'returning';
-            phaseStartTime = currentTime;
-            updatePhaseDisplay('returning');
-            giveFeedback("Great! Returning to squat position", "good-form");
-          } else if (!posture.isInPlankPosition && timeInPhase > 500) {
-            giveFeedback("Maintain plank position - keep body straight and hands on ground", "warning");
-          } else if (posture.avgElbowAngle < 120) {
-            giveFeedback("Nice! Adding a push-up - great form!", "good-form");
+        case 'pushup':
+          // Track the minimum elbow angle during this phase
+          minElbowAngleInPhase = Math.min(minElbowAngleInPhase, posture.avgElbowAngle);
+          
+          // Check for push-up completion: elbow angle must go below 100 degrees
+          if (posture.avgElbowAngle < 100 && !pushupCompleted) {
+            pushupDetectionFrames++;
+            if (pushupDetectionFrames >= 3) { // Require 3 consecutive frames
+              pushupCompleted = true;
+              completedPhases.pushup = true;
+              giveFeedback("💪 Excellent push-up! Now jump back to squat position", "good-form");
+            }
+          } else if (posture.avgElbowAngle >= 100) {
+            pushupDetectionFrames = 0; // Reset if arms extend again without completing
+          }
+          
+          // Only allow progression if push-up was completed
+          if (posture.isSquatting && framesSincePhaseChange > minFramesForPhaseChange) {
+            if (pushupCompleted) {
+              currentPhase = 'returning';
+              framesSincePhaseChange = 0;
+              completedPhases.return = true;
+              updatePhaseDisplay('returning');
+              giveFeedback("🔄 Great! Back to squat - now jump up!", "good-form");
+            } else {
+              // Push-up not completed properly
+              giveFeedback("⚠️ Complete the push-up first! Bend your arms to at least 90 degrees", "warning");
+              framesSincePhaseChange = Math.max(0, framesSincePhaseChange - 10); // Reset some frames
+            }
+          } else if (framesSincePhaseChange > 120) { // ~4 seconds
+            if (!pushupCompleted) {
+              giveFeedback("⚠️ Do a proper push-up: bend your arms to 90 degrees or less!", "warning");
+            } else {
+              giveFeedback("⚠️ Jump your feet back to squat position", "warning");
+            }
           }
           break;
 
         case 'returning':
-          if (posture.isJumping || posture.isStanding) {
+          if ((posture.isJumping || posture.isStanding) && framesSincePhaseChange > minFramesForPhaseChange) {
             currentPhase = 'jumping';
-            phaseStartTime = currentTime;
+            framesSincePhaseChange = 0;
             updatePhaseDisplay('jumping');
-            giveFeedback("Perfect! Jumping up - extend fully!", "good-form");
-          } else if (timeInPhase > 1500) {
-            giveFeedback("Now jump up explosively from the squat position!", "warning");
+            giveFeedback("🚀 Jump higher! Extend fully!", "good-form");
+          } else if (framesSincePhaseChange > 45) { // ~1.5 seconds
+            giveFeedback("⚠️ Jump up explosively from squat position!", "warning");
           }
           break;
 
         case 'jumping':
-          if (posture.isStanding && timeInPhase > 300) {
-            // Complete burpee
-            burpeeCount++;
+          if (posture.isStanding && framesSincePhaseChange > 10) {
+            // Only count as complete burpee if all phases were properly completed
+            if (completedPhases.squat && completedPhases.pushup && completedPhases.return) {
+              burpeeCount++;
+              completedPhases.jump = true;
+              giveFeedback(`🎉 Burpee #${burpeeCount} completed! Excellent work!`, "good-form");
+            } else {
+              partialBurpees++;
+              giveFeedback(`⚠️ Partial rep #${partialBurpees} - make sure to complete all phases properly!`, "warning");
+            }
+            
+            // Reset for next rep
             currentPhase = 'standing';
-            phaseStartTime = currentTime;
-            updatePhaseDisplay('standing');
-            giveFeedback(`Burpee #${burpeeCount} completed! Excellent work! 🎉`, "good-form");
-          } else if (posture.isSquatting && timeInPhase > 100) {
-            // Started next rep without full extension
+            framesSincePhaseChange = 0;
+            pushupCompleted = false;
+            pushupDetectionFrames = 0;
+            minElbowAngleInPhase = 180;
+            completedPhases = { squat: false, pushup: false, return: false, jump: false };
+            updateStats();
+            resetPhaseDisplay();
+            
+            // Brief celebration before next rep
+            setTimeout(() => {
+              if (isTracking) {
+                giveFeedback("Ready for next burpee! Squat down to start", "processing");
+              }
+            }, 2000);
+            
+          } else if (posture.isSquatting && framesSincePhaseChange > 5) {
+            // Started next rep without full extension - always partial
             partialBurpees++;
             currentPhase = 'squatting';
-            phaseStartTime = currentTime;
+            framesSincePhaseChange = 0;
+            pushupCompleted = false;
+            pushupDetectionFrames = 0;
+            minElbowAngleInPhase = 180;
+            completedPhases = { squat: true, pushup: false, return: false, jump: false };
+            updateStats();
             updatePhaseDisplay('squatting');
-            giveFeedback(`Partial burpee #${partialBurpees} - try to jump higher and extend fully`, "warning");
+            giveFeedback(`⚠️ Partial rep #${partialBurpees} - jump higher and extend fully next time!`, "warning");
           }
           break;
       }
 
-      // Form corrections based on posture analysis
-      if (currentPhase === 'plank') {
-        if (posture.avgElbowAngle < 90) {
-          giveFeedback("Keep your arms more extended in plank position", "warning");
-        } else if (Math.abs(posture.shoulderHeight - posture.hipHeight) > 0.2) {
-          giveFeedback("Keep your body straight in plank - avoid sagging or piking", "warning");
+      // Additional form feedback
+      if (currentPhase === 'pushup') {
+        if (posture.avgElbowAngle > 150 && !pushupCompleted) {
+          giveFeedback("⚠️ Bend your arms more for a proper push-up", "warning");
+        } else if (Math.abs(posture.shoulderHeight - posture.hipHeight) > 0.25) {
+          giveFeedback("⚠️ Keep your body straight - avoid sagging or piking", "warning");
         }
       }
 
-      if (currentPhase === 'squatting') {
-        if (posture.avgKneeAngle > 140) {
-          giveFeedback("Squat deeper - bend your knees more", "warning");
-        }
+      if (currentPhase === 'squatting' && posture.avgKneeAngle > 140) {
+        giveFeedback("⚠️ Squat deeper - bend your knees more", "warning");
       }
     }
 
-    function cleanup() {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
+    async function processVideo() {
+      if (!isTracking || !poseLandmarker) return;
+
+      try {
+        const currentTime = performance.now();
+        const results = poseLandmarker.detectForVideo(video, currentTime);
+        
+        if (results.landmarks && results.landmarks.length > 0) {
+          const posture = analyzePosture(results.landmarks);
+          processBurpeeMovement(posture);
+        } else {
+          if (framesSincePhaseChange > 60) { // If no pose detected for 2 seconds
+            giveFeedback("⚠️ Please stay in camera view for accurate tracking", "warning");
+          }
+        }
+        
+      } catch (error) {
+        console.error("Error processing video frame:", error);
       }
-      processing = false;
-      // Reset phase display
-      document.querySelectorAll('.phase-indicator').forEach(el => {
-        el.className = 'phase-indicator phase-inactive';
-      });
+
+      if (isTracking) {
+        animationFrameId = requestAnimationFrame(processVideo);
+      }
     }
 
-    async function analyzeVideo(video) {
-      return new Promise(async (resolve, reject) => {
-        document.getElementById('feedback').textContent = "Processing video for burpee analysis...";
-        document.getElementById('feedback').className = "processing";
-        document.getElementById('result').textContent = "";
-        
-        console.log("Processing video for burpees...");
-        
-        // Reset counters
-        burpeeCount = 0;
-        partialBurpees = 0;
-        currentPhase = 'standing';
-        phaseStartTime = 0;
-        lastFeedback = "";
+    // Event listeners
+    startBtn.addEventListener('click', startCamera);
+    stopBtn.addEventListener('click', stopCamera);
+    resetBtn.addEventListener('click', resetCount);
 
-        if (!poseLandmarker) {
-          await setupPoseLandmarker();
-          if (!poseLandmarker) {
-            const errorMsg = "Error: Could not initialize pose detection.";
-            document.getElementById('feedback').textContent = errorMsg;
-            document.getElementById('feedback').className = "error";
-            console.error(errorMsg);
-            reject(new Error(errorMsg));
-            return;
-          }
-        }
-
-        // Reset video to start
-        video.currentTime = 0;
-        video.muted = true;
-        
-        // Wait for video to be ready
-        await new Promise((res) => {
-          const onCanPlay = () => {
-            video.removeEventListener('canplay', onCanPlay);
-            res();
-          };
-          video.addEventListener('canplay', onCanPlay);
-          if (video.readyState >= 3) {
-            res();
-          }
-        });
-
-        const FRAME_SKIP = 3; // Process every 3rd frame for better performance
-        let frame = 0;
-        let lastProcessedTime = -1;
-
-        function processFrame() {
-          try {
-            if (video.ended || video.currentTime >= video.duration) {
-              const resultText = `🏃‍♂️ Analysis Complete!\nFull Burpees: ${burpeeCount}\nPartial Burpees: ${partialBurpees}\nTotal Attempts: ${burpeeCount + partialBurpees}`;
-              document.getElementById('result').textContent = resultText;
-              document.getElementById('feedback').textContent = `Great workout! You completed ${burpeeCount} full burpees!`;
-              document.getElementById('feedback').className = "good-form";
-              console.log("Burpee analysis complete.");
-              console.log("Final Results:", resultText);
-              
-              video.pause();
-              cleanup();
-              resolve({ burpeeCount, partialBurpees });
-              return;
-            }
-
-            if (frame % FRAME_SKIP === 0 && video.currentTime !== lastProcessedTime) {
-              lastProcessedTime = video.currentTime;
-              
-              try {
-                const results = poseLandmarker.detectForVideo(video, performance.now());
-                if (results.landmarks && results.landmarks.length > 0) {
-                  const posture = analyzePosture(results.landmarks);
-                  processBurpeeMovement(posture, video.currentTime * 1000);
-                }
-              } catch (error) {
-                console.error("Error processing frame:", error);
-              }
-            }
-            
-            frame++;
-            
-            if (!video.ended && video.currentTime < video.duration) {
-              animationFrameId = requestAnimationFrame(processFrame);
-            } else {
-              processFrame();
-            }
-            
-          } catch (error) {
-            console.error("Error in processFrame:", error);
-            document.getElementById('feedback').textContent = "Error during processing";
-            document.getElementById('feedback').className = "error";
-            cleanup();
-            reject(error);
-          }
-        }
-
-        try {
-          await video.play();
-          processFrame();
-        } catch (error) {
-          console.error("Error starting video playback:", error);
-          document.getElementById('feedback').textContent = "Error starting video playbook";
-          document.getElementById('feedback').className = "error";
-          cleanup();
-          reject(error);
-        }
-      });
-    }
-
-    document.getElementById('fileInput').addEventListener('change', async (e) => {
-      if (processing) {
-        console.log("Already processing a video. Please wait.");
-        document.getElementById('feedback').textContent = "Already processing a video. Please wait.";
-        return;
-      }
-      
-      cleanup();
-      
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      document.getElementById('result').textContent = "";
-      document.getElementById('feedback').textContent = "Loading video...";
-      
-      const url = URL.createObjectURL(file);
-      const video = document.getElementById('video');
-      video.src = url;
-      
-      video.onloadeddata = async () => {
-        try {
-          processing = true;
-          console.log("Starting burpee analysis...");
-          const results = await analyzeVideo(video);
-          console.log("Burpee analysis completed with results:", results);
-        } catch (error) {
-          console.error("Video analysis failed:", error);
-          document.getElementById('feedback').textContent = "Video analysis failed: " + error.message;
-          document.getElementById('feedback').className = "error";
-        } finally {
-          processing = false;
-          URL.revokeObjectURL(url);
-        }
-      };
-
-      video.onerror = (error) => {
-        console.error("Video loading error:", error);
-        document.getElementById('feedback').textContent = "Error loading video file";
-        document.getElementById('feedback').className = "error";
-        processing = false;
-        URL.revokeObjectURL(url);
-      };
-    });
-
-    // Initialize the pose landmarker on page load
+    // Initialize
     setupPoseLandmarker();
   </script>
 </body>

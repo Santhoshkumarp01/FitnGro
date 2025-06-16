@@ -2,104 +2,255 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Improved Plank Timer with Form Detection</title>
+  <title>Live Plank Timer with Form Detection</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 800px;
+      max-width: 1000px;
       margin: 0 auto;
       padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: white;
     }
+    
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 30px;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2.5em;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .video-container {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    
     #video { 
-      max-width: 100%; 
-      margin-bottom: 1em; 
-      border: 2px solid #ddd;
-      border-radius: 8px;
+      width: 640px;
+      height: 480px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 15px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      transform: scaleX(-1); /* Mirror the video */
     }
-    #feedback { 
-      font-size: 1.2em; 
-      margin-top: 1em; 
-      padding: 10px;
-      border-radius: 5px;
-      background-color: #f8f9fa;
+    
+    .controls {
+      text-align: center;
+      margin-bottom: 30px;
     }
-    #result { 
-      font-size: 1.4em; 
-      margin-top: 1em; 
-      font-weight: bold; 
-      padding: 15px;
-      border-radius: 8px;
-      background-color: #e8f5e8;
+    
+    .btn {
+      background: linear-gradient(45deg, #4CAF50, #45a049);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 1.1em;
+      border-radius: 25px;
+      cursor: pointer;
+      margin: 0 10px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
-    .processing { 
-      color: #ffc107; 
-      background-color: #fff3cd;
+    
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
     }
-    .error { 
-      color: #dc3545; 
-      background-color: #f8d7da;
+    
+    .btn:disabled {
+      background: #666;
+      cursor: not-allowed;
+      transform: none;
     }
-    .good-form {
-      color: #28a745;
-      background-color: #d4edda;
+    
+    .btn.stop {
+      background: linear-gradient(45deg, #f44336, #d32f2f);
     }
-    .bad-form {
-      color: #dc3545;
-      background-color: #f8d7da;
-    }
+    
     .timer {
-      font-size: 2em;
+      font-size: 3em;
       text-align: center;
       margin: 20px 0;
       padding: 20px;
-      background-color: #007bff;
-      color: white;
-      border-radius: 10px;
+      background: linear-gradient(45deg, #FF6B6B, #FF8E53);
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
-    .form-tips {
-      background-color: #e3f2fd;
-      padding: 15px;
-      border-radius: 8px;
+    
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
       margin: 20px 0;
     }
+    
+    .stat-card {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 15px;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .stat-value {
+      font-size: 2em;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    
+    .stat-label {
+      font-size: 0.9em;
+      opacity: 0.8;
+    }
+    
+    #feedback { 
+      font-size: 1.3em; 
+      margin: 20px 0;
+      padding: 20px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+    }
+    
+    .processing { 
+      background: linear-gradient(45deg, #FFC107, #FF9800);
+      animation: pulse 2s infinite;
+    }
+    
+    .error { 
+      background: linear-gradient(45deg, #F44336, #D32F2F);
+    }
+    
+    .good-form {
+      background: linear-gradient(45deg, #4CAF50, #45a049);
+    }
+    
+    .bad-form {
+      background: linear-gradient(45deg, #FF5722, #F44336);
+    }
+    
+    .idle {
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px dashed rgba(255, 255, 255, 0.3);
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    .form-tips {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 15px;
+      margin: 20px 0;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
     .form-tips h3 {
       margin-top: 0;
-      color: #1976d2;
+      color: #FFD700;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
     }
+    
     .form-tips ul {
       margin: 10px 0;
+      padding-left: 20px;
     }
+    
+    .form-tips li {
+      margin: 8px 0;
+      line-height: 1.4;
+    }
+    
     .debug-info {
-      background-color: #f0f0f0;
-      padding: 10px;
-      border-radius: 5px;
-      margin: 10px 0;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
       font-size: 0.9em;
-      font-family: monospace;
+      font-family: 'Courier New', monospace;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .session-stats {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 15px;
+      margin: 20px 0;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .session-stats h3 {
+      margin-top: 0;
+      color: #FFD700;
     }
   </style>
 </head>
 <body>
-  <h2>Improved Plank Timer with Form Detection</h2>
-  
-  <div class="form-tips">
-    <h3>Proper Plank Form:</h3>
-    <ul>
-      <li>Keep your body straight from head to heels</li>
-      <li>Engage your core muscles</li>
-      <li>Keep your hips level (not too high or too low)</li>
-      <li>Maintain neutral spine alignment</li>
-      <li>Keep your shoulders directly over your elbows</li>
-    </ul>
-  </div>
+  <div class="container">
+    <h1>🏋️ Live Plank Timer with AI Form Detection</h1>
+    
+    <div class="form-tips">
+      <h3>🎯 Proper Plank Form Tips:</h3>
+      <ul>
+        <li><strong>Straight line:</strong> Keep your body straight from head to heels</li>
+        <li><strong>Core engaged:</strong> Tighten your abdominal muscles</li>
+        <li><strong>Hip level:</strong> Keep hips level (not too high or too low)</li>
+        <li><strong>Neutral spine:</strong> Maintain natural spine alignment</li>
+        <li><strong>Shoulder position:</strong> Keep shoulders directly over elbows</li>
+        <li><strong>Breathing:</strong> Breathe steadily, don't hold your breath</li>
+      </ul>
+    </div>
 
-  <input type="file" id="fileInput" accept="video/*">
-  <video id="video" controls muted></video>
-  
-  <div id="timer" class="timer">00:00</div>
-  <div id="feedback"></div>
-  <div id="debug" class="debug-info"></div>
-  <div id="result"></div>
+    <div class="video-container">
+      <video id="video" autoplay muted playsinline></video>
+    </div>
+    
+    <div class="controls">
+      <button id="startBtn" class="btn">Start Camera</button>
+      <button id="stopBtn" class="btn stop" disabled>Stop Camera</button>
+      <button id="resetBtn" class="btn">Reset Timer</button>
+    </div>
+    
+    <div class="timer" id="timer">00:00</div>
+    
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-value" id="totalTime">00:00</div>
+        <div class="stat-label">Total Plank Time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="sessionCount">0</div>
+        <div class="stat-label">Plank Sessions</div>
+      </div>
+    </div>
+    
+    <div id="feedback" class="idle">
+      👆 Click "Start Camera" to begin your plank session
+    </div>
+    
+    <div class="session-stats" id="sessionStats" style="display: none;">
+      <h3>📊 Session Statistics</h3>
+      <div id="sessionDetails"></div>
+    </div>
+    
+    <div id="debug" class="debug-info" style="display: none;"></div>
+  </div>
 
   <script type="module">
     import {
@@ -107,22 +258,52 @@
       PoseLandmarker,
     } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
 
-    let poseLandmarker, vision, processing = false;
+    // Global variables
+    let poseLandmarker = null;
+    let vision = null;
+    let webcamStream = null;
     let animationFrameId = null;
+    let isRunning = false;
+    
+    // Timing variables
     let plankStartTime = null;
+    let currentSessionTime = 0;
     let totalPlankTime = 0;
     let isInPlankPosition = false;
-    let lastPositionCheck = 0;
     let consecutiveGoodFrames = 0;
     let consecutiveBadFrames = 0;
-    const REQUIRED_GOOD_FRAMES = 3; // Require 3 consecutive good frames to start timing
-    const REQUIRED_BAD_FRAMES = 5; // Require 5 consecutive bad frames to stop timing
+    let sessionCount = 0;
+    let sessionHistory = [];
+    
+    // Constants
+    const REQUIRED_GOOD_FRAMES = 10; // Require more frames for stability
+    const REQUIRED_BAD_FRAMES = 15; // Require more frames before stopping
+    const FPS = 30; // Target FPS for processing
+    const FRAME_INTERVAL = 1000 / FPS;
+    
+    // DOM elements
+    const video = document.getElementById('video');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const timerElement = document.getElementById('timer');
+    const feedbackElement = document.getElementById('feedback');
+    const debugElement = document.getElementById('debug');
+    const totalTimeElement = document.getElementById('totalTime');
+    const sessionCountElement = document.getElementById('sessionCount');
+    const sessionStatsElement = document.getElementById('sessionStats');
+    const sessionDetailsElement = document.getElementById('sessionDetails');
 
+    // Initialize MediaPipe Pose Landmarker
     async function setupPoseLandmarker() {
       try {
+        feedbackElement.textContent = "🔄 Loading AI pose detection model...";
+        feedbackElement.className = "processing";
+        
         vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
         );
+        
         poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
@@ -130,20 +311,25 @@
           },
           runningMode: "VIDEO",
           numPoses: 1,
-          minPoseDetectionConfidence: 0.3, // Lowered for better detection
-          minPosePresenceConfidence: 0.3,
-          minTrackingConfidence: 0.3,
+          minPoseDetectionConfidence: 0.5,
+          minPosePresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5,
           outputSegmentationMasks: false,
         });
-        console.log("PoseLandmarker initialized successfully");
-        document.getElementById('feedback').textContent = "Pose detection ready. Upload a video to analyze your plank form.";
+        
+        console.log("✅ PoseLandmarker initialized successfully");
+        feedbackElement.textContent = "✅ AI pose detection ready! Click 'Start Camera' to begin.";
+        feedbackElement.className = "idle";
+        startBtn.disabled = false;
+        
       } catch (error) {
-        console.error("Failed to initialize PoseLandmarker:", error);
-        document.getElementById('feedback').textContent = "Failed to load pose detection model. Please try refreshing the page.";
-        document.getElementById('feedback').className = "error";
+        console.error("❌ Failed to initialize PoseLandmarker:", error);
+        feedbackElement.textContent = "❌ Failed to load pose detection model. Please refresh the page.";
+        feedbackElement.className = "error";
       }
     }
 
+    // Calculate angle between three points
     function calcAngle(a, b, c) {
       const ab = Math.hypot(b.x - a.x, b.y - a.y);
       const bc = Math.hypot(c.x - b.x, c.y - b.y);
@@ -152,30 +338,34 @@
       return isNaN(angle) ? 180 : angle;
     }
 
-    function calculateDistance(point1, point2) {
-      return Math.hypot(point2.x - point1.x, point2.y - point1.y);
-    }
-
+    // Format time in MM:SS format
     function formatTime(seconds) {
       const mins = Math.floor(seconds / 60);
       const secs = Math.floor(seconds % 60);
       return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 
-    function updateTimer(currentTime) {
-      const timerElement = document.getElementById('timer');
+    // Update timer display
+    function updateTimer() {
+      const now = Date.now() / 1000;
+      let displayTime = 0;
+      
       if (isInPlankPosition && plankStartTime !== null) {
-        const elapsed = currentTime - plankStartTime;
-        timerElement.textContent = formatTime(elapsed);
+        currentSessionTime = now - plankStartTime;
+        displayTime = currentSessionTime;
       } else {
-        timerElement.textContent = formatTime(totalPlankTime);
+        displayTime = currentSessionTime;
       }
+      
+      timerElement.textContent = formatTime(displayTime);
+      totalTimeElement.textContent = formatTime(totalPlankTime + displayTime);
     }
 
+    // Analyze plank form from pose landmarks
     function analyzePlankForm(landmarks) {
       const lm = landmarks[0];
       
-      // Key body points
+      // Key body points (MediaPipe pose landmarks)
       const nose = lm[0];
       const leftShoulder = lm[11];
       const rightShoulder = lm[12];
@@ -190,7 +380,7 @@
       const leftAnkle = lm[27];
       const rightAnkle = lm[28];
 
-      // Calculate average positions
+      // Calculate average positions for stability
       const avgShoulder = { x: (leftShoulder.x + rightShoulder.x) / 2, y: (leftShoulder.y + rightShoulder.y) / 2 };
       const avgElbow = { x: (leftElbow.x + rightElbow.x) / 2, y: (leftElbow.y + rightElbow.y) / 2 };
       const avgWrist = { x: (leftWrist.x + rightWrist.x) / 2, y: (leftWrist.y + rightWrist.y) / 2 };
@@ -198,319 +388,379 @@
       const avgKnee = { x: (leftKnee.x + rightKnee.x) / 2, y: (leftKnee.y + rightKnee.y) / 2 };
       const avgAnkle = { x: (leftAnkle.x + rightAnkle.x) / 2, y: (leftAnkle.y + rightAnkle.y) / 2 };
 
-      // More robust plank position detection
+      // Plank position detection
       const isOnForearms = avgElbow.y > avgShoulder.y && avgWrist.y > avgElbow.y;
-      
-      // Improved knee detection - check if knees are significantly higher than ankles
-      const kneeHeight = avgKnee.y;
-      const ankleHeight = avgAnkle.y;
-      const hipHeight = avgHip.y;
-      
-      // Knees should be off the ground (higher up in the frame, so lower y-value)
-      const kneesOffGround = kneeHeight < (ankleHeight - 0.03); // More lenient threshold
+      const kneesOffGround = avgKnee.y < (avgAnkle.y - 0.04);
       
       // Body alignment checks
-      const shoulderHipDistance = Math.abs(avgShoulder.y - avgHip.y);
-      const hipKneeDistance = Math.abs(avgHip.y - avgKnee.y);
-      
-      // Check if body is reasonably straight
-      const bodySlope = (avgHip.y - avgShoulder.y) / (avgHip.x - avgShoulder.x);
-      const isBodyStraight = Math.abs(bodySlope) < 0.3; // More lenient slope check
-      
-      // Hip position relative to shoulders and knees
-      const hipTooHigh = avgHip.y < avgShoulder.y - 0.08;
-      const hipTooLow = avgHip.y > avgShoulder.y + 0.08;
+      const hipShoulderDiff = avgHip.y - avgShoulder.y;
+      const hipTooHigh = hipShoulderDiff < -0.06;
+      const hipTooLow = hipShoulderDiff > 0.06;
       
       // Shoulder-elbow alignment
       const shoulderElbowDistance = Math.abs(avgShoulder.x - avgElbow.x);
-      const shouldersOverElbows = shoulderElbowDistance < 0.12; // More lenient
+      const shouldersOverElbows = shoulderElbowDistance < 0.08;
+      
+      // Body straightness check
+      const bodySlope = Math.abs((avgHip.y - avgShoulder.y) / (avgHip.x - avgShoulder.x + 0.001));
+      const isBodyStraight = bodySlope < 0.25;
+
+      // Form feedback messages
+      let formFeedback = [];
+      let isGoodForm = true;
+
+      if (!isOnForearms) {
+        formFeedback.push("🔽 Get into plank position - forearms on ground");
+        isGoodForm = false;
+      }
+
+      if (!kneesOffGround) {
+        formFeedback.push("⬆️ Lift your knees off the ground");
+        isGoodForm = false;
+      }
+
+      if (hipTooHigh) {
+        formFeedback.push("⬇️ Lower your hips - they're too high");
+        isGoodForm = false;
+      } else if (hipTooLow) {
+        formFeedback.push("⬆️ Raise your hips - they're sagging");
+        isGoodForm = false;
+      }
+
+      if (!shouldersOverElbows && isOnForearms) {
+        formFeedback.push("📐 Position shoulders directly over elbows");
+        isGoodForm = false;
+      }
+
+      if (!isBodyStraight && isOnForearms && kneesOffGround) {
+        formFeedback.push("📏 Keep your body in a straight line");
+        isGoodForm = false;
+      }
+
+      // Core plank requirements
+      const isValidPlank = isOnForearms && kneesOffGround && !hipTooHigh && !hipTooLow;
+      const isPerfectForm = isValidPlank && shouldersOverElbows && isBodyStraight;
 
       // Debug information
       const debugInfo = {
         isOnForearms,
         kneesOffGround,
-        kneeHeight: kneeHeight.toFixed(3),
-        ankleHeight: ankleHeight.toFixed(3),
-        hipHeight: hipHeight.toFixed(3),
-        bodySlope: bodySlope.toFixed(3),
-        isBodyStraight,
         hipTooHigh,
         hipTooLow,
-        shouldersOverElbows
+        shouldersOverElbows,
+        isBodyStraight,
+        bodySlope: bodySlope.toFixed(3),
+        hipShoulderDiff: hipShoulderDiff.toFixed(3)
       };
-
-      // Form feedback
-      let formFeedback = [];
-      let isGoodForm = true;
-
-      // Check basic plank position
-      if (!isOnForearms) {
-        formFeedback.push("Get into plank position - forearms on ground");
-        isGoodForm = false;
-      }
-
-      // Check if knees are off the ground
-      if (!kneesOffGround) {
-        formFeedback.push("Keep knees off the ground");
-        isGoodForm = false;
-      }
-
-      // Check hip position
-      if (hipTooHigh) {
-        formFeedback.push("Lower your hips - they're too high");
-        isGoodForm = false;
-      } else if (hipTooLow) {
-        formFeedback.push("Raise your hips - they're sagging");
-        isGoodForm = false;
-      }
-
-      // Check shoulder alignment (less strict)
-      if (!shouldersOverElbows) {
-        formFeedback.push("Position shoulders over elbows");
-        // Don't fail form for this alone
-      }
-
-      // Core plank requirements: forearms down, knees up, reasonable hip position
-      const isValidPlank = isOnForearms && kneesOffGround && !hipTooHigh && !hipTooLow;
 
       return {
         isInPlank: isValidPlank,
-        isGoodForm: isValidPlank && shouldersOverElbows,
-        feedback: formFeedback.length > 0 ? formFeedback : ["Great form! Keep it up!"],
+        isGoodForm: isPerfectForm,
+        feedback: formFeedback.length > 0 ? formFeedback : ["🎉 Perfect form! Keep it up!"],
         debug: debugInfo
       };
     }
 
-    function giveFeedback(analysis, currentVideoTime) {
-      const feedbackElement = document.getElementById('feedback');
-      const debugElement = document.getElementById('debug');
+    // Provide real-time feedback
+    function giveFeedback(analysis) {
+      const now = Date.now() / 1000;
       
-      // Display debug information
+      // Update debug info
       debugElement.innerHTML = `
-        Debug Info:<br>
-        Forearms: ${analysis.debug.isOnForearms ? 'Yes' : 'No'}<br>
-        Knees off ground: ${analysis.debug.kneesOffGround ? 'Yes' : 'No'}<br>
-        Knee Y: ${analysis.debug.kneeHeight}, Ankle Y: ${analysis.debug.ankleHeight}<br>
-        Body straight: ${analysis.debug.isBodyStraight ? 'Yes' : 'No'}<br>
-        Hip position: ${analysis.debug.hipTooHigh ? 'Too high' : analysis.debug.hipTooLow ? 'Too low' : 'Good'}<br>
-        Shoulders over elbows: ${analysis.debug.shouldersOverElbows ? 'Yes' : 'No'}<br>
-        Valid plank: ${analysis.isInPlank ? 'Yes' : 'No'}
+        <strong>🔍 Debug Info:</strong><br>
+        Forearms down: ${analysis.debug.isOnForearms ? '✅' : '❌'}<br>
+        Knees off ground: ${analysis.debug.kneesOffGround ? '✅' : '❌'}<br>
+        Hip position: ${analysis.debug.hipTooHigh ? '🔺 Too high' : analysis.debug.hipTooLow ? '🔻 Too low' : '✅ Good'}<br>
+        Shoulders over elbows: ${analysis.debug.shouldersOverElbows ? '✅' : '❌'}<br>
+        Body straight: ${analysis.debug.isBodyStraight ? '✅' : '❌'}<br>
+        Valid plank: ${analysis.isInPlank ? '✅' : '❌'}<br>
+        Good frames: ${consecutiveGoodFrames} | Bad frames: ${consecutiveBadFrames}
       `;
       
       if (analysis.isInPlank) {
         consecutiveGoodFrames++;
         consecutiveBadFrames = 0;
         
-        feedbackElement.textContent = analysis.feedback.join(", ");
-        feedbackElement.className = "good-form";
+        feedbackElement.textContent = analysis.feedback.join(" • ");
+        feedbackElement.className = analysis.isGoodForm ? "good-form" : "bad-form";
         
         // Start timing after consecutive good frames
         if (!isInPlankPosition && consecutiveGoodFrames >= REQUIRED_GOOD_FRAMES) {
-          plankStartTime = currentVideoTime;
+          plankStartTime = now;
           isInPlankPosition = true;
-          console.log("Plank started at:", plankStartTime);
+          currentSessionTime = 0;
+          console.log("🟢 Plank started!");
         }
       } else {
         consecutiveBadFrames++;
         consecutiveGoodFrames = 0;
         
-        feedbackElement.textContent = analysis.feedback.join(", ");
+        feedbackElement.textContent = analysis.feedback.join(" • ");
         feedbackElement.className = "bad-form";
         
         // Stop timing after consecutive bad frames
         if (isInPlankPosition && consecutiveBadFrames >= REQUIRED_BAD_FRAMES) {
           if (plankStartTime !== null) {
-            totalPlankTime += currentVideoTime - plankStartTime;
+            const sessionTime = now - plankStartTime;
+            totalPlankTime += sessionTime;
+            sessionCount++;
+            sessionHistory.push({
+              duration: sessionTime,
+              timestamp: new Date()
+            });
+            
+            // Update session stats
+            sessionCountElement.textContent = sessionCount;
+            updateSessionStats();
+            
             plankStartTime = null;
             isInPlankPosition = false;
-            console.log("Plank ended. Total time so far:", totalPlankTime);
+            currentSessionTime = 0;
+            console.log("🔴 Plank ended. Session time:", formatTime(sessionTime));
           }
         }
       }
     }
 
-    function cleanup() {
+    // Update session statistics
+    function updateSessionStats() {
+      if (sessionHistory.length > 0) {
+        sessionStatsElement.style.display = 'block';
+        
+        const longestSession = Math.max(...sessionHistory.map(s => s.duration));
+        const averageSession = sessionHistory.reduce((sum, s) => sum + s.duration, 0) / sessionHistory.length;
+        
+        sessionDetailsElement.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div>
+              <strong>🏆 Longest Session:</strong><br>
+              ${formatTime(longestSession)}
+            </div>
+            <div>
+              <strong>📊 Average Session:</strong><br>
+              ${formatTime(averageSession)}
+            </div>
+          </div>
+          <div style="margin-top: 15px;">
+            <strong>📈 Recent Sessions:</strong><br>
+            ${sessionHistory.slice(-5).reverse().map((session, index) => 
+              `${index + 1}. ${formatTime(session.duration)} - ${session.timestamp.toLocaleTimeString()}`
+            ).join('<br>')}
+          </div>
+        `;
+      }
+    }
+
+    // Process video frames for pose detection
+    let lastProcessTime = 0;
+    async function processVideoFrame() {
+      if (!isRunning || !poseLandmarker) return;
+      
+      const now = performance.now();
+      
+      // Limit processing to target FPS
+      if (now - lastProcessTime >= FRAME_INTERVAL) {
+        try {
+          const results = poseLandmarker.detectForVideo(video, now);
+          
+          if (results.landmarks && results.landmarks.length > 0) {
+            const analysis = analyzePlankForm(results.landmarks);
+            giveFeedback(analysis);
+          } else {
+            // No pose detected
+            feedbackElement.textContent = "🔍 Move into camera view for pose detection";
+            feedbackElement.className = "bad-form";
+            
+            if (isInPlankPosition) {
+              consecutiveBadFrames++;
+              if (consecutiveBadFrames >= REQUIRED_BAD_FRAMES) {
+                // Stop timing due to no pose detection
+                if (plankStartTime !== null) {
+                  const sessionTime = Date.now() / 1000 - plankStartTime;
+                  totalPlankTime += sessionTime;
+                  sessionCount++;
+                  sessionHistory.push({
+                    duration: sessionTime,
+                    timestamp: new Date()
+                  });
+                  
+                  sessionCountElement.textContent = sessionCount;
+                  updateSessionStats();
+                  
+                  plankStartTime = null;
+                  isInPlankPosition = false;
+                  currentSessionTime = 0;
+                }
+              }
+            }
+          }
+          
+          lastProcessTime = now;
+        } catch (error) {
+          console.error("Error processing frame:", error);
+        }
+      }
+      
+      // Update timer
+      updateTimer();
+      
+      // Continue processing
+      if (isRunning) {
+        animationFrameId = requestAnimationFrame(processVideoFrame);
+      }
+    }
+
+    // Start webcam
+    async function startWebcam() {
+      try {
+        feedbackElement.textContent = "🎥 Starting camera...";
+        feedbackElement.className = "processing";
+        
+        webcamStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: "user"
+          }
+        });
+        
+        video.srcObject = webcamStream;
+        await video.play();
+        
+        isRunning = true;
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        
+        feedbackElement.textContent = "📹 Camera active - Position yourself for plank!";
+        feedbackElement.className = "idle";
+        
+        // Start processing
+        processVideoFrame();
+        
+        console.log("✅ Webcam started successfully");
+        
+      } catch (error) {
+        console.error("❌ Error starting webcam:", error);
+        feedbackElement.textContent = "❌ Error accessing camera. Please check permissions.";
+        feedbackElement.className = "error";
+      }
+    }
+
+    // Stop webcam
+    function stopWebcam() {
+      isRunning = false;
+      
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
       }
-      processing = false;
-      // Reset timing variables
-      plankStartTime = null;
-      totalPlankTime = 0;
-      isInPlankPosition = false;
-      consecutiveGoodFrames = 0;
-      consecutiveBadFrames = 0;
-    }
-
-    async function analyzeVideo(video) {
-      return new Promise(async (resolve, reject) => {
-        document.getElementById('feedback').textContent = "Processing video...";
-        document.getElementById('feedback').className = "processing";
-        document.getElementById('result').textContent = "";
-        
-        console.log("Processing video...");
-        
-        // Reset timing variables
-        plankStartTime = null;
-        totalPlankTime = 0;
-        isInPlankPosition = false;
-        consecutiveGoodFrames = 0;
-        consecutiveBadFrames = 0;
-
-        if (!poseLandmarker) {
-          await setupPoseLandmarker();
-          if (!poseLandmarker) {
-            const errorMsg = "Error: Could not initialize pose detection.";
-            document.getElementById('feedback').textContent = errorMsg;
-            document.getElementById('feedback').className = "error";
-            console.error(errorMsg);
-            reject(new Error(errorMsg));
-            return;
-          }
-        }
-
-        // Reset video to start
-        video.currentTime = 0;
-        video.muted = true;
-        
-        // Wait for video to be ready
-        await new Promise((res) => {
-          const onCanPlay = () => {
-            video.removeEventListener('canplay', onCanPlay);
-            res();
-          };
-          video.addEventListener('canplay', onCanPlay);
-          if (video.readyState >= 3) {
-            res();
-          }
-        });
-
-        const FRAME_SKIP = 1; // Process more frames for better accuracy
-        let frame = 0;
-        let lastProcessedTime = -1;
-
-        function processFrame() {
-          try {
-            const currentVideoTime = video.currentTime;
-            
-            // Check if video has ended
-            if (video.ended || currentVideoTime >= video.duration) {
-              // If was in plank position when video ended, add remaining time
-              if (isInPlankPosition && plankStartTime !== null) {
-                totalPlankTime += currentVideoTime - plankStartTime;
-              }
-              
-              const resultText = `Plank Analysis Complete!\nTotal plank time: ${formatTime(totalPlankTime)}`;
-              document.getElementById('result').textContent = resultText;
-              document.getElementById('feedback').textContent = "Analysis complete.";
-              document.getElementById('feedback').className = "";
-              document.getElementById('timer').textContent = formatTime(totalPlankTime);
-              console.log("Analysis complete. Total plank time:", totalPlankTime);
-              
-              video.pause();
-              cleanup();
-              resolve({ totalTime: totalPlankTime });
-              return;
-            }
-
-            // Process every nth frame
-            if (frame % FRAME_SKIP === 0 && currentVideoTime !== lastProcessedTime) {
-              lastProcessedTime = currentVideoTime;
-              
-              try {
-                const results = poseLandmarker.detectForVideo(video, performance.now());
-                if (results.landmarks && results.landmarks.length > 0) {
-                  const analysis = analyzePlankForm(results.landmarks);
-                  giveFeedback(analysis, currentVideoTime);
-                  updateTimer(currentVideoTime);
-                }
-              } catch (error) {
-                console.error("Error processing frame:", error);
-              }
-            }
-            
-            frame++;
-            
-            // Continue processing
-            if (!video.ended && currentVideoTime < video.duration) {
-              animationFrameId = requestAnimationFrame(processFrame);
-            } else {
-              processFrame();
-            }
-            
-          } catch (error) {
-            console.error("Error in processFrame:", error);
-            document.getElementById('feedback').textContent = "Error during processing";
-            document.getElementById('feedback').className = "error";
-            cleanup();
-            reject(error);
-          }
-        }
-
-        // Start processing
-        try {
-          await video.play();
-          processFrame();
-        } catch (error) {
-          console.error("Error starting video playback:", error);
-          document.getElementById('feedback').textContent = "Error starting video playback";
-          document.getElementById('feedback').className = "error";
-          cleanup();
-          reject(error);
-        }
-      });
-    }
-
-    document.getElementById('fileInput').addEventListener('change', async (e) => {
-      if (processing) {
-        console.log("Already processing a video. Please wait.");
-        document.getElementById('feedback').textContent = "Already processing a video. Please wait.";
-        return;
+      
+      if (webcamStream) {
+        webcamStream.getTracks().forEach(track => track.stop());
+        webcamStream = null;
       }
       
-      cleanup();
+      video.srcObject = null;
       
-      const file = e.target.files[0];
-      if (!file) return;
+      // Stop current session if active
+      if (isInPlankPosition && plankStartTime !== null) {
+        const sessionTime = Date.now() / 1000 - plankStartTime;
+        totalPlankTime += sessionTime;
+        sessionCount++;
+        sessionHistory.push({
+          duration: sessionTime,
+          timestamp: new Date()
+        });
+        
+        sessionCountElement.textContent = sessionCount;
+        updateSessionStats();
+      }
       
-      // Clear previous results
-      document.getElementById('result').textContent = "";
-      document.getElementById('feedback').textContent = "Loading video...";
-      document.getElementById('timer').textContent = "00:00";
-      document.getElementById('debug').textContent = "";
+      // Reset timing variables
+      plankStartTime = null;
+      isInPlankPosition = false;
+      currentSessionTime = 0;
+      consecutiveGoodFrames = 0;
+      consecutiveBadFrames = 0;
       
-      const url = URL.createObjectURL(file);
-      const video = document.getElementById('video');
-      video.src = url;
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
       
-      video.onloadeddata = async () => {
-        try {
-          processing = true;
-          console.log("Starting plank analysis...");
-          const results = await analyzeVideo(video);
-          console.log("Analysis completed with results:", results);
-        } catch (error) {
-          console.error("Video analysis failed:", error);
-          document.getElementById('feedback').textContent = "Video analysis failed: " + error.message;
-          document.getElementById('feedback').className = "error";
-        } finally {
-          processing = false;
-          URL.revokeObjectURL(url);
-        }
-      };
+      feedbackElement.textContent = "📷 Camera stopped. Click 'Start Camera' to resume.";
+      feedbackElement.className = "idle";
+      
+      console.log("📷 Webcam stopped");
+    }
 
-      video.onerror = (error) => {
-        console.error("Video loading error:", error);
-        document.getElementById('feedback').textContent = "Error loading video file";
-        document.getElementById('feedback').className = "error";
-        processing = false;
-        URL.revokeObjectURL(url);
-      };
+    // Reset timer and statistics
+    function resetTimer() {
+      // Stop current session
+      if (isInPlankPosition && plankStartTime !== null) {
+        const sessionTime = Date.now() / 1000 - plankStartTime;
+        totalPlankTime += sessionTime;
+      }
+      
+      // Reset all timing variables
+      plankStartTime = null;
+      isInPlankPosition = false;
+      currentSessionTime = 0;
+      totalPlankTime = 0;
+      sessionCount = 0;
+      sessionHistory = [];
+      consecutiveGoodFrames = 0;
+      consecutiveBadFrames = 0;
+      
+      // Update display
+      timerElement.textContent = "00:00";
+      totalTimeElement.textContent = "00:00";
+      sessionCountElement.textContent = "0";
+      sessionStatsElement.style.display = 'none';
+      
+      if (isRunning) {
+        feedbackElement.textContent = "🔄 Timer reset - Position yourself for plank!";
+        feedbackElement.className = "idle";
+      }
+      
+      console.log("🔄 Timer and statistics reset");
+    }
+
+    // Event listeners
+    startBtn.addEventListener('click', startWebcam);
+    stopBtn.addEventListener('click', stopWebcam);
+    resetBtn.addEventListener('click', resetTimer);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (isRunning) {
+          stopWebcam();
+        } else if (!startBtn.disabled) {
+          startWebcam();
+        }
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        resetTimer();
+      }
     });
 
-    // Initialize the pose landmarker on page load
-    setupPoseLandmarker();
+    // Show/hide debug info (click on timer)
+    timerElement.addEventListener('click', () => {
+      debugElement.style.display = debugElement.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // Initialize the application
+    window.addEventListener('load', () => {
+      console.log("🚀 Initializing Live Plank Timer...");
+      setupPoseLandmarker();
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      if (isRunning) {
+        stopWebcam();
+      }
+    });
   </script>
 </body>
 </html>
